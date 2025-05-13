@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
-
+//Управление продуктами:
 public class ProductsController(IUnitOfWork unit) : BaseApiController
 {
     [Cache(600)]
