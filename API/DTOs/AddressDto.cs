@@ -12,7 +12,6 @@ public class AddressDto
     [Required]
     public string City { get; set; } = string.Empty;
 
-    [Required]
     public string State { get; set; } = string.Empty;
 
     [Required]

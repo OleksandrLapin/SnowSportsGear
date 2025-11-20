@@ -104,10 +104,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   async onStepChange(event: StepperSelectionEvent) {
     if (event.selectedIndex === 1) {
-      if (this.saveAddress) {
-        const address = await this.getAddressFromStripeAddress() as Address;
-        address && firstValueFrom(this.accountService.updateAddress(address));
-      }
+      await this.saveDefaultAddressIfNeeded();
     }
     if (event.selectedIndex === 2) {
       await firstValueFrom(this.stripeService.createOrUpdatePaymentIntent());
@@ -173,17 +170,18 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   private async getAddressFromStripeAddress(): Promise<Address | ShippingAddress | null> {
     const result = await this.addressElement?.getValue();
+    if (!result?.complete) return null;
     const address = result?.value.address;
 
     if (address) {
       return {
         name: result.value.name,
-        line1: address.line1,
+        line1: address.line1 || '',
         line2: address.line2 || undefined,
-        city: address.city,
-        country: address.country,
-        state: address.state,
-        postalCode: address.postal_code
+        city: address.city || '',
+        country: address.country || '',
+        state: address.state || '',
+        postalCode: address.postal_code || ''
       }
     } else return null;
   }
@@ -194,5 +192,18 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stripeService.disposeElements();
+  }
+
+  private async saveDefaultAddressIfNeeded() {
+    if (!this.saveAddress) return;
+    try {
+      const address = await this.getAddressFromStripeAddress() as Address;
+      if (!address) throw new Error('Please complete address before saving');
+      await firstValueFrom(this.accountService.updateAddress(address));
+      this.snackbar.success('Address saved');
+    } catch (error: any) {
+      const message = error?.error?.title || error?.error || error?.message || 'Could not save address';
+      this.snackbar.error(message);
+    }
   }
 }
