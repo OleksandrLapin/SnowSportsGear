@@ -31,12 +31,13 @@ export interface Order {
     expYear: number
   }
   
-  export interface OrderItem {
+export interface OrderItem {
     productId: number
     productName: string
     pictureUrl: string
     price: number
     quantity: number
+    size: string
   }
   
   export interface OrderToCreate {

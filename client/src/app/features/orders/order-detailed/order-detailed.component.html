@@ -38,21 +38,22 @@
                 <div class="border-y border-gray-200">
                     <table class="w-full text-center">
                         <tbody class="divide-y divide-gray-200">
-                            @for (item of order.orderItems; track item.productId) {
+                            @for (item of order.orderItems; track item.productId + '-' + item.size) {
                                 <tr>
-                                    <td class="py-4">
-                                        <div class="flex items-center gap-4">
-                                            <img src="{{item.pictureUrl}}" alt="product image" 
-                                                class="w-10 h-10">
-                                            <span>{{item.productName}}</span>
-                                        </div>
-                                    </td>
-                                    <td class="p-4">x{{item.quantity}}</td>
-                                    <td class="p-4 text-right">{{item.price | currency}}</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                        <td class="py-4">
+                            <div class="flex items-center gap-4">
+                                <img src="{{item.pictureUrl}}" alt="product image" 
+                                    class="w-10 h-10">
+                                <span>{{item.productName}}</span>
+                            </div>
+                        </td>
+                        <td class="p-4">{{item.size}}</td>
+                        <td class="p-4">x{{item.quantity}}</td>
+                        <td class="p-4 text-right">{{item.price | currency}}</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
                 </div>
             </div>
 

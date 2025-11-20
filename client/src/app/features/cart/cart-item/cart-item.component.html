@@ -25,6 +25,9 @@
             <a routerLink="/shop/{{item().productId}}" class="font-medium">
                 {{item().productName}}
             </a>
+            <div class="text-sm text-gray-600">
+                Size: <span class="font-medium text-gray-800">{{item().size}}</span>
+            </div>
 
             <div class="flex items-center gap-4">
                 <button mat-button color="warn" (click)="removeItemFromCart()">

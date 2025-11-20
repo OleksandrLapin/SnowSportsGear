@@ -10,6 +10,7 @@ import { MatInput } from '@angular/material/input';
 import { MatDivider } from '@angular/material/divider';
 import { CartService } from '../../../core/services/cart.service';
 import { FormsModule } from '@angular/forms';
+import { MatSelectModule } from '@angular/material/select';
 
 @Component({
   selector: 'app-product-details',
@@ -22,7 +23,8 @@ import { FormsModule } from '@angular/forms';
     MatInput,
     MatLabel,
     MatDivider,
-    FormsModule
+    FormsModule,
+    MatSelectModule
   ],
   templateUrl: './product-details.component.html',
   styleUrl: './product-details.component.scss'
@@ -34,6 +36,8 @@ export class ProductDetailsComponent implements OnInit {
   product?: Product;
   quantityInCart = 0;
   quantity = 1;
+  sizes = ['XS', 'S', 'M', 'L', 'XL'];
+  selectedSize: string | null = null;
 
   ngOnInit(): void {
     this.loadProduct();
@@ -53,20 +57,32 @@ export class ProductDetailsComponent implements OnInit {
 
   updateCart() {
     if (!this.product) return;
+    if (!this.selectedSize) {
+      return;
+    }
     if (this.quantity > this.quantityInCart) {
       const itemsToAdd = this.quantity - this.quantityInCart;
       this.quantityInCart += itemsToAdd;
-      this.cartService.addItemToCart(this.product, itemsToAdd);
+      this.cartService.addItemToCart(this.product, itemsToAdd, this.selectedSize);
     } else {
       const itemsToRemove = this.quantityInCart - this.quantity;
       this.quantityInCart -= itemsToRemove;
-      this.cartService.removeItemFromCart(this.product.id, itemsToRemove);
+      this.cartService.removeItemFromCart(this.product.id, itemsToRemove, this.selectedSize);
     }
   }
 
   updateQuantityInCart() {
-    this.quantityInCart = this.cartService.cart()?.items
-      .find(x => x.productId === this.product?.id)?.quantity || 0;
+    const matchingItems = this.cartService.cart()?.items.filter(x => x.productId === this.product?.id) || [];
+    const currentItem = this.selectedSize
+      ? matchingItems.find(x => x.size === this.selectedSize)
+      : matchingItems[0];
+
+    if (currentItem) {
+      this.selectedSize = currentItem.size;
+      this.quantityInCart = currentItem.quantity;
+    } else {
+      this.quantityInCart = 0;
+    }
     this.quantity = this.quantityInCart || 1;
   }
 

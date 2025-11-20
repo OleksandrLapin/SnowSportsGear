@@ -27,6 +27,8 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit) : Base
 
         foreach (var item in cart.Items)
         {
+            if (string.IsNullOrWhiteSpace(item.Size)) return BadRequest("Size is required for all cart items");
+
             var productItem = await unit.Repository<Product>().GetByIdAsync(item.ProductId);
 
             if (productItem == null) return BadRequest("Problem with the order");
@@ -42,7 +44,8 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit) : Base
             {
                 ItemOrdered = itemOrdered,
                 Price = productItem.Price,
-                Quantity = item.Quantity
+                Quantity = item.Quantity,
+                Size = item.Size
             };
             items.Add(orderItem);
         }

@@ -6,6 +6,9 @@ import { CurrencyPipe } from '@angular/common';
 import { MatButton } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { CartService } from '../../../core/services/cart.service';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormField, MatLabel } from '@angular/material/form-field';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-product-item',
@@ -17,7 +20,11 @@ import { CartService } from '../../../core/services/cart.service';
     MatIcon,
     CurrencyPipe,
     MatButton,
-    RouterLink
+    RouterLink,
+    MatSelectModule,
+    FormsModule,
+    MatFormField,
+    MatLabel
   ],
   templateUrl: './product-item.component.html',
   styleUrl: './product-item.component.scss'
@@ -25,4 +32,12 @@ import { CartService } from '../../../core/services/cart.service';
 export class ProductItemComponent {
   @Input() product?: Product;
   cartService = inject(CartService);
+  sizes = ['XS', 'S', 'M', 'L', 'XL'];
+  selectedSize: string | null = null;
+
+  addToCart(event: Event) {
+    event.stopPropagation();
+    if (!this.product || !this.selectedSize) return;
+    this.cartService.addItemToCart(this.product, 1, this.selectedSize);
+  }
 }

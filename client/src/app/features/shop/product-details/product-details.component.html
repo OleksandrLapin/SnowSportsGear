@@ -17,8 +17,23 @@
                         </p>
                     </div>
 
+                    <div class="flex gap-4 mt-4 items-center">
+                        <mat-form-field appearance="outline" class="w-40">
+                            <mat-label>Size</mat-label>
+                            <mat-select [(ngModel)]="selectedSize" (selectionChange)="updateQuantityInCart()">
+                                <mat-option [value]="null" disabled>Select size</mat-option>
+                                @for (size of sizes; track size) {
+                                    <mat-option [value]="size">{{size}}</mat-option>
+                                }
+                            </mat-select>
+                        </mat-form-field>
+                        @if (!selectedSize) {
+                            <span class="text-sm text-gray-500">Please select a size</span>
+                        }
+                    </div>
+
                     <div class="flex gap-4 mt-6">
-                        <button [disabled]="quantity === quantityInCart" 
+                        <button [disabled]="quantity === quantityInCart || !selectedSize" 
                             (click)="updateCart()"
                             mat-flat-button class="match-input-height">
                             <mat-icon>shopping_cart</mat-icon>

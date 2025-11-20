@@ -7,4 +7,5 @@ public class OrderItemDto
     public required string PictureUrl { get; set; }
     public decimal Price { get; set; }
     public int Quantity { get; set; }
+    public required string Size { get; set; }
 }

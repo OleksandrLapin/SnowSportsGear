@@ -3,7 +3,7 @@
 
     <div class="flex w-full items-start gap-6 mt-32">
         <div class="w-3/4">
-            @for (item of cartService.cart()?.items; track item.productId) {
+            @for (item of cartService.cart()?.items; track item.productId + '-' + item.size) {
             <app-cart-item [item]="item"></app-cart-item>
             }
         </div>

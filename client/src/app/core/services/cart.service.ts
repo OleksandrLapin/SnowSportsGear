@@ -65,19 +65,20 @@ export class CartService {
     return this.http.get<Coupon>(this.baseUrl + 'coupons/' + code);
   }
 
-  async addItemToCart(item: CartItem | Product, quantity = 1) {
+  async addItemToCart(item: CartItem | Product, quantity = 1, size?: string) {
     const cart = this.cart() ?? this.createCart();
     if (this.isProduct(item)) {
-      item = this.mapProductToCartItem(item);
+      if (!size) throw new Error('Size is required');
+      item = this.mapProductToCartItem(item, size);
     }
     cart.items = this.addOrUpdateItem(cart.items, item, quantity);
     await firstValueFrom(this.setCart(cart));
   }
 
-async removeItemFromCart(productId: number, quantity = 1) {
+async removeItemFromCart(productId: number, quantity = 1, size?: string) {
     const cart = this.cart();
     if (!cart) return;
-    const index = cart.items.findIndex(x => x.productId === productId);
+    const index = cart.items.findIndex(x => x.productId === productId && (size ? x.size === size : true));
     if (index !== -1) {
       if (cart.items[index].quantity > quantity) {
         cart.items[index].quantity -= quantity;
@@ -102,7 +103,7 @@ async removeItemFromCart(productId: number, quantity = 1) {
   }
 
   private addOrUpdateItem(items: CartItem[], item: CartItem, quantity: number): CartItem[] {
-    const index = items.findIndex(x => x.productId === item.productId);
+    const index = items.findIndex(x => x.productId === item.productId && x.size === item.size);
     if (index === -1) {
       item.quantity = quantity;
       items.push(item);
@@ -112,7 +113,7 @@ async removeItemFromCart(productId: number, quantity = 1) {
     return items;
   }
 
-  private mapProductToCartItem(item: Product): CartItem {
+  private mapProductToCartItem(item: Product, size: string): CartItem {
     return {
       productId: item.id,
       productName: item.name,
@@ -120,7 +121,8 @@ async removeItemFromCart(productId: number, quantity = 1) {
       quantity: 0,
       pictureUrl: item.pictureUrl,
       brand: item.brand,
-      type: item.type
+      type: item.type,
+      size
     }
   }
 

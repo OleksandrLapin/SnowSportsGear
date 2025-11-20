@@ -10,5 +10,6 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
     {
         builder.OwnsOne(x => x.ItemOrdered, o => o.WithOwner());
         builder.Property(x => x.Price).HasColumnType("decimal(18,2)");
+        builder.Property(x => x.Size).IsRequired().HasMaxLength(20);
     }
 }

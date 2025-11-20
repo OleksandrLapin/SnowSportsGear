@@ -23,14 +23,14 @@ export class CartItemComponent {
   cartService = inject(CartService);
 
   incrementQuantity() {
-    this.cartService.addItemToCart(this.item());
+    this.cartService.addItemToCart(this.item(), 1, this.item().size);
   }
 
   decrementQuantity() {
-    this.cartService.removeItemFromCart(this.item().productId);
+    this.cartService.removeItemFromCart(this.item().productId, 1, this.item().size);
   }
 
   removeItemFromCart() {
-    this.cartService.removeItemFromCart(this.item().productId, this.item().quantity);
+    this.cartService.removeItemFromCart(this.item().productId, this.item().quantity, this.item().size);
   }
 }
