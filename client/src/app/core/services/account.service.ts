@@ -2,7 +2,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Address, User } from '../../shared/models/user';
-import { map, tap } from 'rxjs';
+import { map, switchMap, tap } from 'rxjs';
 import { SignalrService } from './signalr.service';
 
 @Injectable({
@@ -15,14 +15,16 @@ export class AccountService {
   currentUser = signal<User | null>(null);
   isAdmin = computed(() => {
     const roles = this.currentUser()?.roles;
+    if (this.currentUser()?.isAdmin) return true;
     return Array.isArray(roles) ? roles.includes('Admin') : roles === 'Admin';
   });
 
   login(values: any) {
     let params = new HttpParams();
     params = params.append('useCookies', true);
-    return this.http.post<User>(this.baseUrl + 'login', values, {params}).pipe(
-      tap(() => this.signalrService.createHubConnection())
+    return this.http.post(this.baseUrl + 'login', values, {params}).pipe(
+      tap(() => this.signalrService.createHubConnection()),
+      switchMap(() => this.getUserInfo())
     )
   }
 
@@ -41,7 +43,10 @@ export class AccountService {
 
   logout() {
     return this.http.post(this.baseUrl + 'account/logout', {}).pipe(
-      tap(() => this.signalrService.stopHubConnection())
+      tap(() => {
+        this.signalrService.stopHubConnection();
+        this.currentUser.set(null);
+      })
     )
   }
 

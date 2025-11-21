@@ -9,16 +9,23 @@ public class StoreContextSeed
 {
     public static async Task SeedAsync(StoreContext context, UserManager<AppUser> userManager)
     {
-        if (!userManager.Users.Any(x => x.UserName == "admin@test.com"))
+        var adminUser = await userManager.FindByEmailAsync("admin@test.com");
+
+        if (adminUser == null)
         {
-            var user = new AppUser
+            adminUser = new AppUser
             {
                 UserName = "admin@test.com",
                 Email = "admin@test.com",
             };
 
-            await userManager.CreateAsync(user, "Pa$$w0rd");
-            await userManager.AddToRoleAsync(user, "Admin");
+            await userManager.CreateAsync(adminUser, "Pa$$w0rd");
+        }
+
+        var adminRoles = await userManager.GetRolesAsync(adminUser);
+        if (!adminRoles.Contains("Admin"))
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
         }
 
         var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);

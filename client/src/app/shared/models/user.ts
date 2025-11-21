@@ -4,6 +4,7 @@ export type User = {
     email: string;
     address: Address;
     roles: string | string[];
+    isAdmin?: boolean;
 }
 
 export type Address = {

@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 //Управление аутентификацией:
-public class AccountController(SignInManager<AppUser> signInManager) : BaseApiController
+public class AccountController(SignInManager<AppUser> signInManager, UserManager<AppUser> userManager) : BaseApiController
 {
     [HttpPost("register")]
     public async Task<ActionResult> Register(RegisterDto registerDto)
@@ -51,6 +51,7 @@ public class AccountController(SignInManager<AppUser> signInManager) : BaseApiCo
         if (User.Identity?.IsAuthenticated == false) return NoContent();
 
         var user = await signInManager.UserManager.GetUserByEmailWithAddress(User);
+        var roles = await userManager.GetRolesAsync(user);
 
         return Ok(new
         {
@@ -58,7 +59,8 @@ public class AccountController(SignInManager<AppUser> signInManager) : BaseApiCo
             user.LastName,
             user.Email,
             Address = user.Address?.ToDto(),
-            Roles = User.FindFirstValue(ClaimTypes.Role)
+            Roles = roles,
+            IsAdmin = roles.Contains("Admin")
         });
     }
 
