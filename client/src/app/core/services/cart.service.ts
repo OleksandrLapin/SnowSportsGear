@@ -119,7 +119,7 @@ async removeItemFromCart(productId: number, quantity = 1, size?: string) {
       productName: item.name,
       price: item.price,
       quantity: 0,
-      pictureUrl: item.pictureUrl,
+      pictureUrl: item.pictureUrl ?? '',
       brand: item.brand,
       type: item.type,
       size

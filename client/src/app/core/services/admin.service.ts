@@ -38,12 +38,12 @@ export class AdminService {
     return this.http.get<Pagination<Product>>(this.baseUrl + 'products', {params});
   }
 
-  createProduct(product: Product) {
-    return this.http.post<Product>(this.baseUrl + 'products', product);
+  createProduct(formData: FormData) {
+    return this.http.post<Product>(this.baseUrl + 'products', formData);
   }
 
-  updateProduct(product: Product) {
-    return this.http.put(this.baseUrl + 'products/' + product.id, product);
+  updateProduct(id: number, formData: FormData) {
+    return this.http.put<Product>(this.baseUrl + 'products/' + id, formData);
   }
 
   deleteProduct(id: number) {

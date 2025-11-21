@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace API.DTOs;
 
@@ -14,9 +15,6 @@ public class CreateProductDto
     public decimal Price { get; set; }
 
     [Required]
-    public string PictureUrl { get; set; } = string.Empty;
-
-    [Required]
     public string Type { get; set; } = string.Empty;
 
     [Required]
@@ -24,4 +22,6 @@ public class CreateProductDto
 
     [Range(1, int.MaxValue, ErrorMessage = "Quantity in stock must be at least 1")]
     public int QuantityInStock { get; set; }
+
+    public IFormFile? Image { get; set; }
 }

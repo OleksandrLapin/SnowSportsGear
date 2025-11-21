@@ -10,5 +10,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
     {
         builder.Property(x => x.Price).HasColumnType("decimal(18,2)");
         builder.Property(x => x.Name).IsRequired();
+        builder.Property(x => x.PictureContentType).HasMaxLength(100);
+        builder.Property(x => x.PictureData).HasColumnType("varbinary(max)");
     }
 }

@@ -7,3 +7,18 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     cursor: pointer;
 }
+
+.product-image {
+    width: 100%;
+    height: 220px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}

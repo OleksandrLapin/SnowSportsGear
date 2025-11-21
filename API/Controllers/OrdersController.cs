@@ -63,7 +63,8 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit) : Base
             Discount = orderDto.Discount,
             PaymentSummary = orderDto.PaymentSummary,
             PaymentIntentId = cart.PaymentIntentId,
-            BuyerEmail = email
+            BuyerEmail = email,
+            Status = OrderStatus.PaymentReceived
         };
 
         unit.Repository<Order>().Add(order);

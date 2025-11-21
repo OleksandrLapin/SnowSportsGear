@@ -36,13 +36,10 @@ public class AdminController(IUnitOfWork unit, IPaymentService paymentService) :
     public async Task<ActionResult<OrderDto>> RefundOrder(int id)
     {
         var spec = new OrderSpecification(id);
-
+        
         var order = await unit.Repository<Order>().GetEntityWithSpec(spec);
 
         if (order == null) return BadRequest("No order with that id");
-
-        if (order.Status == OrderStatus.Pending)
-            return BadRequest("Payment not received for this order");
 
         var result = await paymentService.RefundPayment(order.PaymentIntentId);
 

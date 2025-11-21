@@ -17,6 +17,9 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { forkJoin } from 'rxjs';
+import { SnackbarService } from '../../core/services/snackbar.service';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { FormControl } from '@angular/forms';
 
 @Component({
   selector: 'app-admin',
@@ -35,7 +38,8 @@ import { forkJoin } from 'rxjs';
     RouterLink,
     ReactiveFormsModule,
     MatFormFieldModule,
-    MatInputModule
+    MatInputModule,
+    MatAutocompleteModule
   ],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss'
@@ -46,6 +50,7 @@ export class AdminComponent implements OnInit {
   private adminService = inject(AdminService);
   private dialogService = inject(DialogService);
   private fb = inject(FormBuilder);
+  private snackbar = inject(SnackbarService);
   orderParams = new OrderParams();
   totalItems = 0;
   statusOptions = ['All', 'PaymentReceived', 'PaymentMismatch', 'Refunded', 'Pending'];
@@ -57,12 +62,19 @@ export class AdminComponent implements OnInit {
   brands: string[] = [];
   types: string[] = [];
   editingProductId: number | null = null;
+  selectedFile: File | null = null;
+  imagePreview: string | null = null;
+  showProductForm = false;
+  productFilters = this.fb.group({
+    search: [''],
+    brand: [''],
+    type: ['']
+  });
   productForm = this.fb.group({
     id: [0],
     name: ['', Validators.required],
     description: ['', Validators.required],
     price: [0, [Validators.required, Validators.min(0.01)]],
-    pictureUrl: ['', Validators.required],
     type: ['', Validators.required],
     brand: ['', Validators.required],
     quantityInStock: [0, [Validators.required, Validators.min(0)]],
@@ -72,6 +84,8 @@ export class AdminComponent implements OnInit {
     this.loadOrders();
     this.loadProducts();
     this.loadFilters();
+    this.setupFilterPredicate();
+    this.productFilters.valueChanges.subscribe(() => this.applyProductFilters());
   }
 
   loadOrders() {
@@ -120,6 +134,8 @@ export class AdminComponent implements OnInit {
         if (response.data) {
           this.productDataSource.data = response.data;
           this.productTotal = response.count;
+          this.mergeBrandTypeFromProducts(response.data);
+          this.applyProductFilters();
         }
       }
     })
@@ -144,8 +160,11 @@ export class AdminComponent implements OnInit {
   }
 
   editProduct(product: Product) {
+    this.showProductForm = true;
     this.editingProductId = product.id;
     this.productForm.patchValue(product);
+    this.imagePreview = product.pictureUrl || null;
+    this.selectedFile = null;
   }
 
   resetProductForm() {
@@ -155,24 +174,40 @@ export class AdminComponent implements OnInit {
       name: '',
       description: '',
       price: 0,
-      pictureUrl: '',
       type: '',
       brand: '',
       quantityInStock: 0
     });
+    this.selectedFile = null;
+    this.imagePreview = null;
+    this.showProductForm = false;
   }
 
   submitProduct() {
     if (this.productForm.invalid) return;
     const product = this.productForm.value as Product;
+    const formData = new FormData();
+    formData.append('name', product.name ?? '');
+    formData.append('description', product.description ?? '');
+    formData.append('price', product.price?.toString() ?? '0');
+    formData.append('type', product.type ?? '');
+    formData.append('brand', product.brand ?? '');
+    formData.append('quantityInStock', product.quantityInStock?.toString() ?? '0');
+    if (this.selectedFile) formData.append('image', this.selectedFile);
+
     const request$ = this.editingProductId
-      ? this.adminService.updateProduct(product)
-      : this.adminService.createProduct(product);
+      ? this.adminService.updateProduct(this.editingProductId, formData)
+      : this.adminService.createProduct(formData);
 
     request$.subscribe({
       next: () => {
+        this.snackbar.success(this.editingProductId ? 'Product updated' : 'Product created');
+        this.mergeBrandTypeFromProducts([{...product, id: this.editingProductId ?? 0} as Product]);
         this.resetProductForm();
         this.loadProducts();
+      },
+      error: (err) => {
+        this.snackbar.error(err?.error || 'Operation failed');
       }
     })
   }
@@ -184,7 +219,100 @@ export class AdminComponent implements OnInit {
     );
     if (!confirmed) return;
     this.adminService.deleteProduct(id).subscribe({
-      next: () => this.loadProducts()
+      next: () => {
+        this.snackbar.success('Product deleted');
+        this.loadProducts();
+      }
     })
+  }
+
+  onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    this.setFile(input.files[0]);
+  }
+
+  onDrop(event: DragEvent) {
+    event.preventDefault();
+    if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+      this.setFile(event.dataTransfer.files[0]);
+      event.dataTransfer.clearData();
+    }
+  }
+
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+  }
+
+  private setFile(file: File) {
+    this.selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.imagePreview = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  private mergeBrandTypeFromProducts(products: Product[]) {
+    const brandSet = new Set(this.brands);
+    const typeSet = new Set(this.types);
+    products.forEach(p => {
+      if (p.brand) brandSet.add(p.brand);
+      if (p.type) typeSet.add(p.type);
+    });
+    this.brands = Array.from(brandSet).sort();
+    this.types = Array.from(typeSet).sort();
+  }
+
+  get filteredBrands() {
+    const term = (this.productForm.get('brand')?.value || '').toLowerCase();
+    return this.brands.filter(b => b.toLowerCase().includes(term));
+  }
+
+  get filteredTypes() {
+    const term = (this.productForm.get('type')?.value || '').toLowerCase();
+    return this.types.filter(t => t.toLowerCase().includes(term));
+  }
+
+  get filteredBrandFilters() {
+    const term = (this.productFilters.get('brand')?.value || '').toLowerCase();
+    return this.brands.filter(b => b.toLowerCase().includes(term));
+  }
+
+  get filteredTypeFilters() {
+    const term = (this.productFilters.get('type')?.value || '').toLowerCase();
+    return this.types.filter(t => t.toLowerCase().includes(term));
+  }
+
+  toggleCreateProduct() {
+    this.showProductForm = true;
+    this.resetProductForm();
+    this.showProductForm = true;
+  }
+
+  openEditForm() {
+    this.showProductForm = true;
+  }
+
+  private setupFilterPredicate() {
+    this.productDataSource.filterPredicate = (data: Product, filter: string) => {
+      const f = JSON.parse(filter) as {search: string, brand: string, type: string};
+      const search = f.search?.toLowerCase() || '';
+      const brand = f.brand?.toLowerCase() || '';
+      const type = f.type?.toLowerCase() || '';
+      const matchesSearch = !search || data.name.toLowerCase().includes(search) || data.description.toLowerCase().includes(search);
+      const matchesBrand = !brand || data.brand.toLowerCase().includes(brand);
+      const matchesType = !type || data.type.toLowerCase().includes(type);
+      return matchesSearch && matchesBrand && matchesType;
+    }
+  }
+
+  applyProductFilters() {
+    const filterValue = {
+      search: this.productFilters.get('search')?.value || '',
+      brand: this.productFilters.get('brand')?.value || '',
+      type: this.productFilters.get('type')?.value || ''
+    };
+    this.productDataSource.filter = JSON.stringify(filterValue);
   }
 }

@@ -1,6 +1,8 @@
 @if (product) {
     <mat-card appearance="raised" routerLink="/shop/{{product.id}}" class="product-card">
-      <img mat-card-image src="{{product.pictureUrl}}" alt="Product image">
+      <div class="product-image">
+        <img mat-card-image [src]="product.pictureUrl" alt="Product image">
+      </div>
       <mat-card-content class="mt-2">
         <h2 class="text-sm font-semibold uppercase">{{product.name}}</h2>
         <p class="font-light">{{product.price | currency}}</p>
