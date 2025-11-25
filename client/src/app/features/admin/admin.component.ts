@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, inject, OnInit, ViewChild } from '@angular/core';
 import {MatTableDataSource, MatTableModule} from '@angular/material/table';
-import { Order } from '../../shared/models/order';
+import { OrderSummary } from '../../shared/models/orderSummary';
 import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { AdminService } from '../../core/services/admin.service';
 import { OrderParams } from '../../shared/models/orderParams';
@@ -46,7 +46,7 @@ import { FormControl } from '@angular/forms';
 })
 export class AdminComponent implements OnInit {
   displayedColumns: string[] = ['id', 'buyerEmail', 'orderDate', 'total', 'status', 'action'];
-  dataSource = new MatTableDataSource<Order>([]);
+  dataSource = new MatTableDataSource<OrderSummary>([]);
   private adminService = inject(AdminService);
   private dialogService = inject(DialogService);
   private fb = inject(FormBuilder);

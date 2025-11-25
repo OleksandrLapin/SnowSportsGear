@@ -11,6 +11,7 @@ import { MatDivider } from '@angular/material/divider';
 import { CartService } from '../../../core/services/cart.service';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
+import { SnackbarService } from '../../../core/services/snackbar.service';
 
 @Component({
   selector: 'app-product-details',
@@ -33,6 +34,7 @@ export class ProductDetailsComponent implements OnInit {
   private shopService = inject(ShopService);
   private activatedRoute = inject(ActivatedRoute);
   private cartService = inject(CartService);
+  private snackbar = inject(SnackbarService);
   product?: Product;
   quantityInCart = 0;
   quantity = 1;
@@ -57,17 +59,31 @@ export class ProductDetailsComponent implements OnInit {
 
   updateCart() {
     if (!this.product) return;
+    if (this.product.quantityInStock <= 0) {
+      this.snackbar.error('Out of stock');
+      return;
+    }
+    if (this.quantity > this.product.quantityInStock) {
+      this.snackbar.error(`Only ${this.product.quantityInStock} left in stock`);
+      this.quantity = this.product.quantityInStock;
+      return;
+    }
     if (!this.selectedSize) {
       return;
     }
-    if (this.quantity > this.quantityInCart) {
-      const itemsToAdd = this.quantity - this.quantityInCart;
-      this.quantityInCart += itemsToAdd;
-      this.cartService.addItemToCart(this.product, itemsToAdd, this.selectedSize);
-    } else {
-      const itemsToRemove = this.quantityInCart - this.quantity;
-      this.quantityInCart -= itemsToRemove;
-      this.cartService.removeItemFromCart(this.product.id, itemsToRemove, this.selectedSize);
+    try {
+      if (this.quantity > this.quantityInCart) {
+        const itemsToAdd = this.quantity - this.quantityInCart;
+        this.cartService.addItemToCart(this.product, itemsToAdd, this.selectedSize);
+        this.quantityInCart += itemsToAdd;
+      } else {
+        const itemsToRemove = this.quantityInCart - this.quantity;
+        this.cartService.removeItemFromCart(this.product.id, itemsToRemove, this.selectedSize);
+        this.quantityInCart -= itemsToRemove;
+      }
+    } catch (error: any) {
+      this.snackbar.error(error?.message || 'Not enough stock');
+      this.updateQuantityInCart();
     }
   }
 
@@ -88,5 +104,12 @@ export class ProductDetailsComponent implements OnInit {
 
   getButtonText() {
     return this.quantityInCart > 0 ? 'Update cart' : 'Add to cart'
+  }
+
+  get stockWarning(): string | null {
+    if (!this.product) return null;
+    if (this.product.quantityInStock <= 0) return 'Out of stock';
+    if (this.product.quantityInStock < 5) return `Only ${this.product.quantityInStock} left`;
+    return null;
   }
 }

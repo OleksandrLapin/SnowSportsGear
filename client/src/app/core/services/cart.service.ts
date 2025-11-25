@@ -69,7 +69,15 @@ export class CartService {
     const cart = this.cart() ?? this.createCart();
     if (this.isProduct(item)) {
       if (!size) throw new Error('Size is required');
-      item = this.mapProductToCartItem(item, size);
+      const product = item as Product;
+      const existingQty = cart.items
+        .filter(x => x.productId === product.id && x.size === size)
+        .reduce((sum, x) => sum + x.quantity, 0);
+      const requested = existingQty + quantity;
+      if (requested > product.quantityInStock) {
+        throw new Error(`Only ${product.quantityInStock - existingQty} left in stock`);
+      }
+      item = this.mapProductToCartItem(product, size);
     }
     cart.items = this.addOrUpdateItem(cart.items, item, quantity);
     await firstValueFrom(this.setCart(cart));

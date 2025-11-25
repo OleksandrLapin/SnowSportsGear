@@ -38,6 +38,7 @@ export class ProductItemComponent {
   addToCart(event: Event) {
     event.stopPropagation();
     if (!this.product || !this.selectedSize) return;
+    if (this.product.quantityInStock <= 0) return;
     this.cartService.addItemToCart(this.product, 1, this.selectedSize);
   }
 }

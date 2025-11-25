@@ -2,6 +2,7 @@
 using System.Text.Json;
 using Core.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Data;
 
@@ -37,10 +38,9 @@ public class StoreContextSeed
 
         if (products == null) return;
 
-        var existingProducts = context.Products.ToList();
+        var hasProducts = await context.Products.AnyAsync();
 
-        // add new ones
-        if (!existingProducts.Any())
+        if (!hasProducts)
         {
             foreach (var product in products)
             {
@@ -51,7 +51,11 @@ public class StoreContextSeed
         }
         else
         {
-            foreach (var product in existingProducts)
+            var productsMissingImages = await context.Products
+                .Where(p => p.PictureData == null)
+                .ToListAsync();
+
+            foreach (var product in productsMissingImages)
             {
                 if (product.PictureData == null)
                 {
@@ -63,7 +67,11 @@ public class StoreContextSeed
                     }
                 }
             }
-            await context.SaveChangesAsync();
+
+            if (productsMissingImages.Count > 0)
+            {
+                await context.SaveChangesAsync();
+            }
         }
 
         if (!context.DeliveryMethods.Any())

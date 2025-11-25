@@ -1,0 +1,11 @@
+.filter-card {
+  @apply bg-white border rounded-lg p-3 flex flex-wrap gap-3 items-end;
+}
+
+.form-card {
+  @apply bg-white border rounded-lg p-4;
+}
+
+.card-title {
+  @apply text-xl font-semibold;
+}

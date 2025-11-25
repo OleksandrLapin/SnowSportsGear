@@ -4,6 +4,7 @@ using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(StoreContext))]
-    partial class StoreContextModelSnapshot : ModelSnapshot
+    [Migration("20251125221616_ProductSearchIndexes")]
+    partial class ProductSearchIndexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -172,7 +175,7 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("BuyerEmail")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("DeliveryMethodId")
                         .HasColumnType("int");
@@ -189,21 +192,14 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("Subtotal")
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("BuyerEmail");
-
                     b.HasIndex("DeliveryMethodId");
-
-                    b.HasIndex("OrderDate");
-
-                    b.HasIndex("Status");
 
                     b.ToTable("Orders");
                 });
@@ -322,13 +318,13 @@ namespace Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "f10ba208-f5c2-4595-8051-5f6bea4b3e44",
+                            Id = "3881fb74-4b3d-487a-a15f-b0ec2dc5224a",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "322dc9a3-1a74-4cbf-8a47-3bdebe3f4c75",
+                            Id = "c5f7d49c-1865-4dfc-aea7-0f4c42e042f7",
                             Name = "Customer",
                             NormalizedName = "CUSTOMER"
                         });
@@ -536,7 +532,8 @@ namespace Infrastructure.Migrations
                 {
                     b.HasOne("Core.Entities.OrderAggregate.Order", null)
                         .WithMany("OrderItems")
-                        .HasForeignKey("OrderId");
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.OwnsOne("Core.Entities.OrderAggregate.ProductItemOrdered", "ItemOrdered", b1 =>
                         {

@@ -119,6 +119,11 @@ public class PaymentService : IPaymentService
             {
                 item.Price = productItem.Price;
             }
+
+            if (item.Quantity > productItem.QuantityInStock)
+            {
+                throw new Exception($"Only {productItem.QuantityInStock} left in stock for {productItem.Name}");
+            }
         }
     }
 

@@ -67,6 +67,17 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit) : Base
             Status = OrderStatus.PaymentReceived
         };
 
+        // decrement stock
+        foreach (var item in items)
+        {
+            var productItem = await unit.Repository<Product>().GetByIdAsync(item.ItemOrdered.ProductId);
+            if (productItem != null)
+            {
+                productItem.QuantityInStock -= item.Quantity;
+                unit.Repository<Product>().Update(productItem);
+            }
+        }
+
         unit.Repository<Order>().Add(order);
 
         if (await unit.Complete())

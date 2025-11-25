@@ -16,6 +16,9 @@
                             {{product.price | currency}}
                         </p>
                     </div>
+                    @if (stockWarning) {
+                        <div class="text-sm text-red-600 mt-1 font-semibold">{{stockWarning}}</div>
+                    }
 
                     <div class="flex gap-4 mt-4 items-center">
                         <mat-form-field appearance="outline" class="w-40">
@@ -33,7 +36,7 @@
                     </div>
 
                     <div class="flex gap-4 mt-6">
-                        <button [disabled]="quantity === quantityInCart || !selectedSize" 
+                        <button [disabled]="quantity === quantityInCart || !selectedSize || product.quantityInStock <= 0" 
                             (click)="updateCart()"
                             mat-flat-button class="match-input-height">
                             <mat-icon>shopping_cart</mat-icon>

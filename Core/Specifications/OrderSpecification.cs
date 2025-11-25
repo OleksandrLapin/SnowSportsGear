@@ -25,7 +25,9 @@ public class OrderSpecification : BaseSpecification<Order>
     }
 
     public OrderSpecification(OrderSpecParams specParams) : base(x => 
-        string.IsNullOrEmpty(specParams.Status) || x.Status == ParseStatus(specParams.Status)
+        string.IsNullOrEmpty(specParams.Status) ||
+        specParams.Status.Equals("all", StringComparison.OrdinalIgnoreCase) ||
+        x.Status == ParseStatus(specParams.Status)
     )
     {
         AddInclude("OrderItems");

@@ -4,6 +4,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { OrderParams } from '../../shared/models/orderParams';
 import { Pagination } from '../../shared/models/pagination';
 import { Order } from '../../shared/models/order';
+import { OrderSummary } from '../../shared/models/orderSummary';
 import { Product } from '../../shared/models/product';
 
 @Injectable({
@@ -20,7 +21,7 @@ export class AdminService {
     }
     params = params.append('pageIndex', orderParams.pageNumber);
     params = params.append('pageSize', orderParams.pageSize);
-    return this.http.get<Pagination<Order>>(this.baseUrl + 'admin/orders', {params});
+    return this.http.get<Pagination<OrderSummary>>(this.baseUrl + 'admin/orders', {params});
   }
 
   getOrder(id: number) {
@@ -28,7 +29,7 @@ export class AdminService {
   }
 
   refundOrder(id: number) {
-    return this.http.post<Order>(this.baseUrl + 'admin/orders/refund/' + id, {});
+    return this.http.post<OrderSummary>(this.baseUrl + 'admin/orders/refund/' + id, {});
   }
 
   getProducts(pageIndex: number, pageSize: number) {

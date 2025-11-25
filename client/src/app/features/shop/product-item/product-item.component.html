@@ -6,6 +6,11 @@
       <mat-card-content class="mt-2">
         <h2 class="text-sm font-semibold uppercase">{{product.name}}</h2>
         <p class="font-light">{{product.price | currency}}</p>
+        @if (product.quantityInStock <= 0) {
+          <p class="text-xs text-red-600 font-semibold">Out of stock</p>
+        } @else if (product.quantityInStock < 5) {
+          <p class="text-xs text-orange-600 font-semibold">Only {{product.quantityInStock}} left</p>
+        }
       </mat-card-content>
       <mat-card-actions (click)="$event.stopPropagation()" class="flex flex-col gap-2">
         <mat-form-field appearance="outline" class="w-full">

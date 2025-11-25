@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace API.Controllers;
 
 [Authorize]
-public class ProductsController(IUnitOfWork unit) : BaseApiController
+public class ProductsController(IProductRepository productsRepo, IUnitOfWork unit) : BaseApiController
 {
     [AllowAnonymous]
     [Cache(600)]
@@ -19,9 +19,10 @@ public class ProductsController(IUnitOfWork unit) : BaseApiController
     public async Task<ActionResult<IReadOnlyList<ProductDto>>> GetProducts(
         [FromQuery]ProductSpecParams specParams)
     {
-        var spec = new ProductSpecification(specParams);
-
-        return await CreatePagedResult(unit.Repository<Product>(), spec, specParams.PageIndex, specParams.PageSize, p => p.ToDto());
+        var (data, count) = await productsRepo.GetProductsPagedAsync(specParams);
+        var baseUrl = GetBaseUrl();
+        var pagination = new Pagination<ProductDto>(specParams.PageIndex, specParams.PageSize, count, data.Select(p => p.ToDto(baseUrl)).ToList());
+        return Ok(pagination);
     }
 
     [AllowAnonymous]
@@ -29,11 +30,37 @@ public class ProductsController(IUnitOfWork unit) : BaseApiController
     [HttpGet("{id:int}")]
     public async Task<ActionResult<ProductDto>> GetProduct(int id)
     {
-        var product = await unit.Repository<Product>().GetByIdAsync(id);
+        var product = await productsRepo.GetProductByIdAsync(id);
 
         if (product == null) return NotFound();
 
-        return product.ToDto();
+        return product.ToDto(GetBaseUrl());
+    }
+
+    [AllowAnonymous]
+    [HttpGet("{id:int}/image")]
+    public async Task<IActionResult> GetProductImage(int id)
+    {
+        var product = await productsRepo.GetProductWithImageAsync(id);
+        if (product == null) return NotFound();
+
+        if (product.PictureData != null && product.PictureContentType != null)
+        {
+            return File(product.PictureData, product.PictureContentType);
+        }
+
+        if (!string.IsNullOrEmpty(product.PictureUrl))
+        {
+            var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", product.PictureUrl.TrimStart('/'));
+            if (System.IO.File.Exists(path))
+            {
+                var contentType = product.PictureContentType ?? "image/png";
+                var bytes = await System.IO.File.ReadAllBytesAsync(path);
+                return File(bytes, contentType);
+            }
+        }
+
+        return NotFound();
     }
 
     [InvalidateCache("api/products|")]
@@ -43,11 +70,11 @@ public class ProductsController(IUnitOfWork unit) : BaseApiController
     {
         var product = await MapDtoToProduct(dto);
 
-        unit.Repository<Product>().Add(product);
+        productsRepo.AddProduct(product);
 
-        if (await unit.Complete())
+        if (await productsRepo.SaveChangesAsync())
         {
-            return CreatedAtAction("GetProduct", new { id = product.Id }, product.ToDto());
+            return CreatedAtAction("GetProduct", new { id = product.Id }, product.ToDto(GetBaseUrl()));
         }
 
         return BadRequest("Problem creating product");
@@ -58,7 +85,7 @@ public class ProductsController(IUnitOfWork unit) : BaseApiController
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ProductDto>> UpdateProduct(int id, [FromForm] CreateProductDto dto)
     {
-        var product = await unit.Repository<Product>().GetByIdAsync(id);
+        var product = await productsRepo.GetProductWithImageAsync(id);
 
         if (product == null) return BadRequest("Cannot update this product");
 
@@ -69,16 +96,13 @@ public class ProductsController(IUnitOfWork unit) : BaseApiController
         product.Type = dto.Type;
         product.QuantityInStock = dto.QuantityInStock;
 
-        if (dto.Image != null && dto.Image.Length > 0)
-        {
-            await SetImageData(product, dto.Image);
-        }
+        await SetImageData(product, dto.Image);
 
-        unit.Repository<Product>().Update(product);
+        productsRepo.UpdateProduct(product);
 
-        if (await unit.Complete())
+        if (await productsRepo.SaveChangesAsync())
         {
-            return product.ToDto();
+            return product.ToDto(GetBaseUrl());
         }
 
         return BadRequest("Problem updating the product");
@@ -89,13 +113,13 @@ public class ProductsController(IUnitOfWork unit) : BaseApiController
     [HttpDelete("{id:int}")]
     public async Task<ActionResult> DeleteProduct(int id)
     {
-        var product = await unit.Repository<Product>().GetByIdAsync(id);
+        var product = await productsRepo.GetProductByIdAsync(id);
 
         if (product == null) return NotFound();
 
-        unit.Repository<Product>().Remove(product);
+        productsRepo.DeleteProduct(product);
 
-        if (await unit.Complete())
+        if (await productsRepo.SaveChangesAsync())
         {
             return NoContent();
         }
@@ -108,9 +132,7 @@ public class ProductsController(IUnitOfWork unit) : BaseApiController
     [HttpGet("brands")]
     public async Task<ActionResult<IReadOnlyList<string>>> GetBrands()
     {
-        var spec = new BrandListSpecification();
-
-        return Ok(await unit.Repository<Product>().ListAsync(spec));
+        return Ok(await productsRepo.GetBrandsAsync());
     }
 
     [AllowAnonymous]
@@ -118,12 +140,8 @@ public class ProductsController(IUnitOfWork unit) : BaseApiController
     [HttpGet("types")]
     public async Task<ActionResult<IReadOnlyList<string>>> GetTypes()
     {
-        var spec = new TypeListSpecification();
-
-        return Ok(await unit.Repository<Product>().ListAsync(spec));
+        return Ok(await productsRepo.GetTypesAsync());
     }
-
-    private bool ProductExists(int id) => unit.Repository<Product>().Exists(id);
 
     private static async Task<Product> MapDtoToProduct(CreateProductDto dto)
     {
@@ -144,9 +162,18 @@ public class ProductsController(IUnitOfWork unit) : BaseApiController
     private static async Task SetImageData(Product product, IFormFile? image)
     {
         if (image == null || image.Length == 0) return;
+        product.PictureUrl = null;
         using var ms = new MemoryStream();
         await image.CopyToAsync(ms);
         product.PictureData = ms.ToArray();
         product.PictureContentType = image.ContentType;
+    }
+
+    private string GetBaseUrl()
+    {
+        var request = HttpContext.Request;
+        var host = request.Host.HasValue ? request.Host.Value : "localhost";
+        var scheme = string.IsNullOrEmpty(request.Scheme) ? "https" : request.Scheme;
+        return $"{scheme}://{host}/";
     }
 }
