@@ -2,7 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { ShopService } from '../../../core/services/shop.service';
 import { ActivatedRoute } from '@angular/router';
 import { Product } from '../../../shared/models/product';
-import { CurrencyPipe } from '@angular/common';
+import { CurrencyPipe, NgClass } from '@angular/common';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
@@ -25,7 +25,8 @@ import { SnackbarService } from '../../../core/services/snackbar.service';
     MatLabel,
     MatDivider,
     FormsModule,
-    MatSelectModule
+    MatSelectModule,
+    NgClass
   ],
   templateUrl: './product-details.component.html',
   styleUrl: './product-details.component.scss'
@@ -38,7 +39,6 @@ export class ProductDetailsComponent implements OnInit {
   product?: Product;
   quantityInCart = 0;
   quantity = 1;
-  sizes = ['XS', 'S', 'M', 'L', 'XL'];
   selectedSize: string | null = null;
 
   ngOnInit(): void {
@@ -51,6 +51,7 @@ export class ProductDetailsComponent implements OnInit {
     this.shopService.getProduct(+id).subscribe({
       next: product => {
         this.product = product;
+        this.selectedSize = this.firstAvailableSize();
         this.updateQuantityInCart();
       },
       error: error => console.log(error)
@@ -58,17 +59,15 @@ export class ProductDetailsComponent implements OnInit {
   }
 
   updateCart() {
-    if (!this.product) return;
-    if (this.product.quantityInStock <= 0) {
-      this.snackbar.error('Out of stock');
+    if (!this.product || !this.selectedSize) return;
+    const variantQty = this.getVariantQuantity(this.selectedSize);
+    if (variantQty <= 0) {
+      this.snackbar.error(`Size ${this.selectedSize} is out of stock`);
       return;
     }
-    if (this.quantity > this.product.quantityInStock) {
-      this.snackbar.error(`Only ${this.product.quantityInStock} left in stock`);
-      this.quantity = this.product.quantityInStock;
-      return;
-    }
-    if (!this.selectedSize) {
+    if (this.quantity > variantQty) {
+      this.snackbar.error(`Only ${variantQty} left in stock`);
+      this.quantity = variantQty;
       return;
     }
     try {
@@ -107,9 +106,26 @@ export class ProductDetailsComponent implements OnInit {
   }
 
   get stockWarning(): string | null {
-    if (!this.product) return null;
-    if (this.product.quantityInStock <= 0) return 'Out of stock';
-    if (this.product.quantityInStock < 5) return `Only ${this.product.quantityInStock} left`;
+    if (!this.product || !this.selectedSize) return null;
+    const qty = this.getVariantQuantity(this.selectedSize);
+    if (qty <= 0) return `Size ${this.selectedSize} out of stock`;
+    if (qty < 5) return `Only ${qty} left for size ${this.selectedSize}`;
     return null;
+  }
+
+  get availableSizes(): string[] {
+    if (!this.product) return [];
+    return this.product.variants.map(v => v.size);
+  }
+
+  private firstAvailableSize(): string | null {
+    const anyAvailable = this.product?.variants.find(v => v.quantityInStock > 0)?.size;
+    return anyAvailable ?? this.availableSizes[0] ?? null;
+  }
+
+  getVariantQuantity(size: string): number {
+    if (!this.product) return 0;
+    const variant = this.product.variants.find(v => v.size === size);
+    return variant?.quantityInStock ?? 0;
   }
 }

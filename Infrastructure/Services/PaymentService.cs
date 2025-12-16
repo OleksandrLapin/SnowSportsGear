@@ -9,12 +9,14 @@ public class PaymentService : IPaymentService
 {
     private readonly ICartService cartService;
     private readonly IUnitOfWork unit;
+    private readonly IProductRepository productRepository;
 
     public PaymentService(IConfiguration config, ICartService cartService,
-        IUnitOfWork unit)
+        IUnitOfWork unit, IProductRepository productRepository)
     {
         this.cartService = cartService;
         this.unit = unit;
+        this.productRepository = productRepository;
         StripeConfiguration.ApiKey = config["StripeSettings:SecretKey"];
     }
 
@@ -112,17 +114,23 @@ public class PaymentService : IPaymentService
     {
         foreach (var item in cart.Items)
         {
-            var productItem = await unit.Repository<Core.Entities.Product>()
-                .GetByIdAsync(item.ProductId) ?? throw new Exception("Problem getting product in cart");
+            var productItem = await productRepository.GetProductWithVariantsAsync(item.ProductId) 
+                ?? throw new Exception("Problem getting product in cart");
 
             if (item.Price != productItem.Price)
             {
                 item.Price = productItem.Price;
             }
 
-            if (item.Quantity > productItem.QuantityInStock)
+            var variant = productItem.Variants.FirstOrDefault(v => v.Size == item.Size);
+            if (variant == null || variant.QuantityInStock <= 0)
             {
-                throw new Exception($"Only {productItem.QuantityInStock} left in stock for {productItem.Name}");
+                throw new Exception($"Size {item.Size} is out of stock for {productItem.Name}");
+            }
+
+            if (item.Quantity > variant.QuantityInStock)
+            {
+                throw new Exception($"Only {variant.QuantityInStock} left in stock for {productItem.Name} size {item.Size}");
             }
         }
     }

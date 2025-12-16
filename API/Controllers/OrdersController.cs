@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace API.Controllers;
 
 [Authorize]
-public class OrdersController(ICartService cartService, IUnitOfWork unit) : BaseApiController
+public class OrdersController(ICartService cartService, IUnitOfWork unit, IProductRepository productRepository) : BaseApiController
 {
     [HttpPost]
     public async Task<ActionResult<Order>> CreateOrder(CreateOrderDto orderDto)
@@ -29,9 +29,15 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit) : Base
         {
             if (string.IsNullOrWhiteSpace(item.Size)) return BadRequest("Size is required for all cart items");
 
-            var productItem = await unit.Repository<Product>().GetByIdAsync(item.ProductId);
+            var productItem = await productRepository.GetProductWithVariantsAsync(item.ProductId);
 
             if (productItem == null) return BadRequest("Problem with the order");
+
+            var variant = productItem.Variants.FirstOrDefault(v => v.Size == item.Size);
+            if (variant == null || variant.QuantityInStock < item.Quantity)
+            {
+                return BadRequest($"Not enough stock for {productItem.Name} size {item.Size}");
+            }
 
             var itemOrdered = new ProductItemOrdered
             {
@@ -70,11 +76,15 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit) : Base
         // decrement stock
         foreach (var item in items)
         {
-            var productItem = await unit.Repository<Product>().GetByIdAsync(item.ItemOrdered.ProductId);
+            var productItem = await productRepository.GetProductWithVariantsAsync(item.ItemOrdered.ProductId);
             if (productItem != null)
             {
-                productItem.QuantityInStock -= item.Quantity;
-                unit.Repository<Product>().Update(productItem);
+                var variant = productItem.Variants.FirstOrDefault(v => v.Size == item.Size);
+                if (variant != null)
+                {
+                    variant.QuantityInStock -= item.Quantity;
+                    unit.Repository<Product>().Update(productItem);
+                }
             }
         }
 

@@ -34,7 +34,7 @@ public class StoreContextSeed
         var productsData = await File
             .ReadAllTextAsync(path + @"/Data/SeedData/products.json");
 
-        var products = JsonSerializer.Deserialize<List<Product>>(productsData);
+        var products = JsonSerializer.Deserialize<List<SeedProduct>>(productsData);
 
         if (products == null) return;
 
@@ -42,9 +42,11 @@ public class StoreContextSeed
 
         if (!hasProducts)
         {
-            foreach (var product in products)
+            foreach (var seedProduct in products)
             {
+                var product = seedProduct.ToProduct();
                 PopulateImage(product, path);
+                product.Variants = BuildDefaultVariants();
                 context.Products.Add(product);
             }
             await context.SaveChangesAsync();
@@ -52,6 +54,7 @@ public class StoreContextSeed
         else
         {
             var productsMissingImages = await context.Products
+                .Include(p => p.Variants)
                 .Where(p => p.PictureData == null)
                 .ToListAsync();
 
@@ -64,6 +67,10 @@ public class StoreContextSeed
                     {
                         product.PictureUrl = match.PictureUrl;
                         PopulateImage(product, path);
+                        if ((product.Variants == null || !product.Variants.Any()))
+                        {
+                            product.Variants = BuildDefaultVariants();
+                        }
                     }
                 }
             }
@@ -111,5 +118,41 @@ public class StoreContextSeed
             ".jpg" or ".jpeg" => "image/jpeg",
             _ => "application/octet-stream"
         };
+    }
+
+    private static List<ProductVariant> BuildDefaultVariants()
+    {
+        return new List<ProductVariant>
+        {
+            new() { Size = "S", QuantityInStock = 5 },
+            new() { Size = "M", QuantityInStock = 7 },
+            new() { Size = "L", QuantityInStock = 10 },
+            new() { Size = "XL", QuantityInStock = 12 },
+        };
+    }
+
+    private class SeedProduct
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public string PictureUrl { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+        public string Brand { get; set; } = string.Empty;
+        public int QuantityInStock { get; set; }
+
+        public Product ToProduct()
+        {
+            return new Product
+            {
+                Name = Name,
+                Description = Description,
+                Price = Price,
+                PictureUrl = PictureUrl,
+                Type = Type,
+                Brand = Brand,
+                Variants = []
+            };
+        }
     }
 }

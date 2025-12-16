@@ -70,12 +70,16 @@ export class CartService {
     if (this.isProduct(item)) {
       if (!size) throw new Error('Size is required');
       const product = item as Product;
+      const variant = product.variants?.find(v => v.size === size);
+      if (!variant || variant.quantityInStock <= 0) {
+        throw new Error(`Size ${size} is out of stock`);
+      }
       const existingQty = cart.items
         .filter(x => x.productId === product.id && x.size === size)
         .reduce((sum, x) => sum + x.quantity, 0);
       const requested = existingQty + quantity;
-      if (requested > product.quantityInStock) {
-        throw new Error(`Only ${product.quantityInStock - existingQty} left in stock`);
+      if (requested > variant.quantityInStock) {
+        throw new Error(`Only ${variant.quantityInStock - existingQty} left in stock for size ${size}`);
       }
       item = this.mapProductToCartItem(product, size);
     }

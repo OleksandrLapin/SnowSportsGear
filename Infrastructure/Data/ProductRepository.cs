@@ -28,18 +28,7 @@ public class ProductRepository(StoreContext context) : IProductRepository
     {
         return await context.Products
             .AsNoTracking()
-            .Select(p => new Product
-            {
-                Id = p.Id,
-                Name = p.Name,
-                Description = p.Description,
-                Price = p.Price,
-                PictureUrl = p.PictureUrl,
-                PictureContentType = p.PictureContentType,
-                Type = p.Type,
-                Brand = p.Brand,
-                QuantityInStock = p.QuantityInStock
-            })
+            .Include(p => p.Variants)
             .FirstOrDefaultAsync(p => p.Id == id);
     }
 
@@ -62,18 +51,7 @@ public class ProductRepository(StoreContext context) : IProductRepository
         };
 
         return await query
-            .Select(p => new Product
-            {
-                Id = p.Id,
-                Name = p.Name,
-                Description = p.Description,
-                Price = p.Price,
-                PictureUrl = p.PictureUrl,
-                PictureContentType = p.PictureContentType,
-                Type = p.Type,
-                Brand = p.Brand,
-                QuantityInStock = p.QuantityInStock
-            })
+            .Include(p => p.Variants)
             .ToListAsync();
     }
 
@@ -107,20 +85,9 @@ public class ProductRepository(StoreContext context) : IProductRepository
         var count = await query.CountAsync();
 
         var data = await query
+            .Include(p => p.Variants)
             .Skip(specParams.PageSize * (specParams.PageIndex - 1))
             .Take(specParams.PageSize)
-            .Select(p => new Product
-            {
-                Id = p.Id,
-                Name = p.Name,
-                Description = p.Description,
-                Price = p.Price,
-                PictureUrl = p.PictureUrl,
-                PictureContentType = p.PictureContentType,
-                Type = p.Type,
-                Brand = p.Brand,
-                QuantityInStock = p.QuantityInStock
-            })
             .ToListAsync();
 
         return (data, count);
@@ -128,7 +95,16 @@ public class ProductRepository(StoreContext context) : IProductRepository
 
     public async Task<Product?> GetProductWithImageAsync(int id)
     {
-        return await context.Products.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        return await context.Products.AsNoTracking()
+            .Include(p => p.Variants)
+            .FirstOrDefaultAsync(x => x.Id == id);
+    }
+
+    public async Task<Product?> GetProductWithVariantsAsync(int id)
+    {
+        return await context.Products
+            .Include(p => p.Variants)
+            .FirstOrDefaultAsync(x => x.Id == id);
     }
 
     public async Task<IReadOnlyList<string>> GetTypesAsync()

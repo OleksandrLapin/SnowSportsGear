@@ -188,15 +188,34 @@
                                 <mat-label>Description</mat-label>
                                 <textarea matInput rows="3" formControlName="description" required></textarea>
                             </mat-form-field>
-                            <div class="grid grid-cols-2 gap-3">
-                                <mat-form-field appearance="outline" class="w-full">
-                                    <mat-label>Price</mat-label>
-                                    <input type="number" min="0" matInput formControlName="price" required>
-                                </mat-form-field>
-                                <mat-form-field appearance="outline" class="w-full">
-                                    <mat-label>Quantity in stock</mat-label>
-                                    <input type="number" min="0" matInput formControlName="quantityInStock" required>
-                                </mat-form-field>
+                            <mat-form-field appearance="outline" class="w-full">
+                                <mat-label>Price</mat-label>
+                                <input type="number" min="0" matInput formControlName="price" required>
+                            </mat-form-field>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-semibold">Variants (size & stock)</h4>
+                                    <button type="button" mat-stroked-button (click)="addVariantRow()">Add variant</button>
+                                </div>
+                                <div class="space-y-2">
+                                    @for (variant of variants.controls; let i = $index; track i) {
+                                        <div class="grid grid-cols-3 gap-3 items-center">
+                                            <mat-form-field appearance="outline" class="w-full col-span-1">
+                                                <mat-label>Size</mat-label>
+                                                <input matInput [formControl]="getVariantControl(variant, 'size')" required>
+                                            </mat-form-field>
+                                            <mat-form-field appearance="outline" class="w-full col-span-1">
+                                                <mat-label>Quantity</mat-label>
+                                                <input type="number" min="0" matInput [formControl]="getVariantControl(variant, 'quantityInStock')" required>
+                                            </mat-form-field>
+                                            <div class="flex justify-end col-span-1">
+                                                <button type="button" mat-icon-button color="warn" (click)="removeVariantRow(i)" [disabled]="variants.length <= 1">
+                                                    <mat-icon>delete</mat-icon>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <mat-form-field appearance="outline" class="w-full">

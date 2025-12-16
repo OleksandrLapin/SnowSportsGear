@@ -17,15 +17,22 @@
           <mat-label>Size</mat-label>
           <mat-select [(ngModel)]="selectedSize">
             <mat-option [value]="null" disabled>Select size</mat-option>
-            @for (size of sizes; track size) {
-              <mat-option [value]="size">{{size}}</mat-option>
+            @for (size of availableSizes; track size) {
+              <mat-option [value]="size" [disabled]="!isSizeAvailable(size)">
+                {{size}}
+                @if (getVariantQuantity(size) <= 0) { (out of stock) }
+                @else if (getVariantQuantity(size) < 5) { (only {{getVariantQuantity(size)}} left) }
+              </mat-option>
             }
           </mat-select>
         </mat-form-field>
-        <button mat-stroked-button class="w-full" [disabled]="!selectedSize" (click)="addToCart($event)">
+        <button mat-stroked-button class="w-full" [disabled]="!selectedSize || !isSelectedSizeAvailable()" (click)="addToCart($event)">
           <mat-icon>add_shopping_cart</mat-icon>
           Add to cart
         </button>
+        @if (selectedSize && !isSelectedSizeAvailable()) {
+          <p class="text-xs text-gray-500">This size is not available</p>
+        }
       </mat-card-actions>
     </mat-card>
   }

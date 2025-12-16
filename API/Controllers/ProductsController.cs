@@ -85,7 +85,7 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ProductDto>> UpdateProduct(int id, [FromForm] CreateProductDto dto)
     {
-        var product = await productsRepo.GetProductWithImageAsync(id);
+        var product = await productsRepo.GetProductWithVariantsAsync(id);
 
         if (product == null) return BadRequest("Cannot update this product");
 
@@ -94,7 +94,7 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         product.Price = dto.Price;
         product.Brand = dto.Brand;
         product.Type = dto.Type;
-        product.QuantityInStock = dto.QuantityInStock;
+        ApplyVariants(product, dto.Variants);
 
         await SetImageData(product, dto.Image);
 
@@ -152,9 +152,10 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
             Price = dto.Price,
             Brand = dto.Brand,
             Type = dto.Type,
-            QuantityInStock = dto.QuantityInStock
+            Variants = []
         };
 
+        ApplyVariants(product, dto.Variants);
         await SetImageData(product, dto.Image);
         return product;
     }
@@ -167,6 +168,43 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         await image.CopyToAsync(ms);
         product.PictureData = ms.ToArray();
         product.PictureContentType = image.ContentType;
+    }
+
+    private static void ApplyVariants(Product product, List<CreateProductVariantDto> variantsDto)
+    {
+        product.Variants.Clear();
+        var defaultSizes = new[] { "S", "M", "L", "XL" };
+
+        var normalizedVariants = variantsDto
+            .Where(v => !string.IsNullOrWhiteSpace(v.Size))
+            .GroupBy(v => v.Size.Trim().ToUpperInvariant())
+            .Select(g => new { Size = g.Key, Quantity = Math.Max(g.First().QuantityInStock, 0) });
+
+        foreach (var variant in normalizedVariants)
+        {
+            product.Variants.Add(new ProductVariant
+            {
+                Size = variant.Size,
+                QuantityInStock = variant.Quantity,
+                ProductId = product.Id
+            });
+        }
+
+        var existingSizes = product.Variants.Select(v => v.Size.ToUpperInvariant()).ToHashSet();
+        foreach (var size in defaultSizes)
+        {
+            var key = size.ToUpperInvariant();
+            if (!existingSizes.Contains(key))
+            {
+                // добавляем отсутствующие размеры с нулевым остатком, чтобы они были видны на фронте
+                product.Variants.Add(new ProductVariant
+                {
+                    Size = key,
+                    QuantityInStock = 0,
+                    ProductId = product.Id
+                });
+            }
+        }
     }
 
     private string GetBaseUrl()

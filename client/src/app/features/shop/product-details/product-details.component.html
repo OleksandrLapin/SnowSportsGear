@@ -25,8 +25,12 @@
                             <mat-label>Size</mat-label>
                             <mat-select [(ngModel)]="selectedSize" (selectionChange)="updateQuantityInCart()">
                                 <mat-option [value]="null" disabled>Select size</mat-option>
-                                @for (size of sizes; track size) {
-                                    <mat-option [value]="size">{{size}}</mat-option>
+                                @for (size of availableSizes; track size) {
+                                    <mat-option [value]="size" [disabled]="getVariantQuantity(size) <= 0">
+                                        <span [ngClass]="{'text-gray-400': getVariantQuantity(size) <= 0}">
+                                            {{size}} @if (getVariantQuantity(size) <= 0) { (unavailable) }
+                                        </span>
+                                    </mat-option>
                                 }
                             </mat-select>
                         </mat-form-field>
@@ -36,7 +40,7 @@
                     </div>
 
                     <div class="flex gap-4 mt-6">
-                        <button [disabled]="quantity === quantityInCart || !selectedSize || product.quantityInStock <= 0" 
+                        <button [disabled]="quantity === quantityInCart || !selectedSize || getVariantQuantity(selectedSize) <= 0" 
                             (click)="updateCart()"
                             mat-flat-button class="match-input-height">
                             <mat-icon>shopping_cart</mat-icon>
@@ -60,5 +64,3 @@
         </div>
     </section>
 }
-
-

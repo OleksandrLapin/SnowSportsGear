@@ -19,5 +19,10 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.HasIndex(x => x.Brand);
         builder.HasIndex(x => x.Type);
         builder.HasIndex(x => new { x.Brand, x.Type });
+
+        builder.HasMany(x => x.Variants)
+            .WithOne(v => v.Product)
+            .HasForeignKey(v => v.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

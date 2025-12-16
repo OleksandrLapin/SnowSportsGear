@@ -10,7 +10,7 @@ public class Product : BaseEntity, IDtoConvertible
     public string? PictureUrl { get; set; }
     public required string Type { get; set; }
     public required string Brand { get; set; }
-    public int QuantityInStock { get; set; }
     public byte[]? PictureData { get; set; }
     public string? PictureContentType { get; set; }
+    public ICollection<ProductVariant> Variants { get; set; } = new List<ProductVariant>();
 }

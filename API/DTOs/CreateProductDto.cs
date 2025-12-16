@@ -20,8 +20,8 @@ public class CreateProductDto
     [Required]
     public string Brand { get; set; } = string.Empty;
 
-    [Range(1, int.MaxValue, ErrorMessage = "Quantity in stock must be at least 1")]
-    public int QuantityInStock { get; set; }
-
     public IFormFile? Image { get; set; }
+
+    [MinLength(1, ErrorMessage = "At least one variant is required")]
+    public List<CreateProductVariantDto> Variants { get; set; } = [];
 }

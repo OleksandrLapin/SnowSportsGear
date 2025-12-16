@@ -7,4 +7,10 @@ export type Product = {
     type: string;
     brand: string;
     quantityInStock: number;
+    variants: ProductVariant[];
+}
+
+export type ProductVariant = {
+    size: string;
+    quantityInStock: number;
 }

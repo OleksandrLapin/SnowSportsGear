@@ -9,6 +9,7 @@ import { CartService } from '../../../core/services/cart.service';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
+import { NgClass } from '@angular/common';
 
 @Component({
   selector: 'app-product-item',
@@ -24,7 +25,8 @@ import { FormsModule } from '@angular/forms';
     MatSelectModule,
     FormsModule,
     MatFormField,
-    MatLabel
+    MatLabel,
+    NgClass
   ],
   templateUrl: './product-item.component.html',
   styleUrl: './product-item.component.scss'
@@ -32,13 +34,31 @@ import { FormsModule } from '@angular/forms';
 export class ProductItemComponent {
   @Input() product?: Product;
   cartService = inject(CartService);
-  sizes = ['XS', 'S', 'M', 'L', 'XL'];
   selectedSize: string | null = null;
 
   addToCart(event: Event) {
     event.stopPropagation();
     if (!this.product || !this.selectedSize) return;
-    if (this.product.quantityInStock <= 0) return;
+    const qty = this.getVariantQuantity(this.selectedSize);
+    if (qty <= 0) return;
     this.cartService.addItemToCart(this.product, 1, this.selectedSize);
+  }
+
+  get availableSizes(): string[] {
+    if (!this.product) return [];
+    return this.product.variants.map(v => v.size);
+  }
+
+  getVariantQuantity(size: string): number {
+    if (!this.product) return 0;
+    return this.product.variants.find(v => v.size === size)?.quantityInStock ?? 0;
+  }
+
+  isSelectedSizeAvailable(): boolean {
+    return this.selectedSize ? this.isSizeAvailable(this.selectedSize) : false;
+  }
+
+  isSizeAvailable(size: string): boolean {
+    return this.getVariantQuantity(size) > 0;
   }
 }

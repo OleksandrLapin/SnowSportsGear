@@ -13,13 +13,12 @@ import {MatTabsModule} from '@angular/material/tabs';
 import { RouterLink } from '@angular/router';
 import { DialogService } from '../../core/services/dialog.service';
 import { Product } from '../../shared/models/product';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { forkJoin } from 'rxjs';
 import { SnackbarService } from '../../core/services/snackbar.service';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { FormControl } from '@angular/forms';
 
 @Component({
   selector: 'app-admin',
@@ -77,7 +76,9 @@ export class AdminComponent implements OnInit {
     price: [0, [Validators.required, Validators.min(0.01)]],
     type: ['', Validators.required],
     brand: ['', Validators.required],
-    quantityInStock: [0, [Validators.required, Validators.min(0)]],
+    variants: this.fb.array([
+      this.createVariantGroup()
+    ])
   });
 
   ngOnInit(): void {
@@ -86,6 +87,17 @@ export class AdminComponent implements OnInit {
     this.loadFilters();
     this.setupFilterPredicate();
     this.productFilters.valueChanges.subscribe(() => this.applyProductFilters());
+  }
+
+  get variants(): FormArray {
+    return this.productForm.get('variants') as FormArray;
+  }
+
+  private createVariantGroup(size = '', quantity = 0) {
+    return this.fb.group({
+      size: [size, Validators.required],
+      quantityInStock: [quantity, [Validators.required, Validators.min(0)]]
+    });
   }
 
   loadOrders() {
@@ -162,13 +174,32 @@ export class AdminComponent implements OnInit {
   editProduct(product: Product) {
     this.showProductForm = true;
     this.editingProductId = product.id;
-    this.productForm.patchValue(product);
+    while (this.variants.length > 0) {
+      this.variants.removeAt(0);
+    }
+    const variantSource = (product.variants && product.variants.length > 0)
+      ? product.variants
+      : [
+        {size: 'S', quantityInStock: 5},
+        {size: 'M', quantityInStock: 7},
+        {size: 'L', quantityInStock: 10},
+        {size: 'XL', quantityInStock: 12}
+      ];
+    variantSource.forEach(v => this.variants.push(this.createVariantGroup(v.size, v.quantityInStock)));
+    this.productForm.patchValue({
+      ...product,
+      variants: this.variants.value
+    });
     this.imagePreview = product.pictureUrl || null;
     this.selectedFile = null;
   }
 
   resetProductForm() {
     this.editingProductId = null;
+    while (this.variants.length > 0) {
+      this.variants.removeAt(0);
+    }
+    ['S','M','L','XL'].forEach(s => this.variants.push(this.createVariantGroup(s, 0)));
     this.productForm.reset({
       id: 0,
       name: '',
@@ -176,7 +207,7 @@ export class AdminComponent implements OnInit {
       price: 0,
       type: '',
       brand: '',
-      quantityInStock: 0
+      variants: this.variants.value
     });
     this.selectedFile = null;
     this.imagePreview = null;
@@ -192,7 +223,11 @@ export class AdminComponent implements OnInit {
     formData.append('price', product.price?.toString() ?? '0');
     formData.append('type', product.type ?? '');
     formData.append('brand', product.brand ?? '');
-    formData.append('quantityInStock', product.quantityInStock?.toString() ?? '0');
+    (this.variants.controls as any[]).forEach((ctrl, index) => {
+      const value = ctrl.value;
+      formData.append(`variants[${index}].size`, value.size ?? '');
+      formData.append(`variants[${index}].quantityInStock`, value.quantityInStock?.toString() ?? '0');
+    });
     if (this.selectedFile) formData.append('image', this.selectedFile);
 
     const request$ = this.editingProductId
@@ -242,6 +277,20 @@ export class AdminComponent implements OnInit {
 
   onDragOver(event: DragEvent) {
     event.preventDefault();
+  }
+
+  addVariantRow() {
+    this.variants.push(this.createVariantGroup());
+  }
+
+  removeVariantRow(index: number) {
+    if (this.variants.length > 1) {
+      this.variants.removeAt(index);
+    }
+  }
+
+  getVariantControl(group: any, controlName: string): FormControl {
+    return group.get(controlName) as FormControl;
   }
 
   private setFile(file: File) {
