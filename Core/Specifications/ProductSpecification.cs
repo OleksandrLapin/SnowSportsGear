@@ -20,6 +20,12 @@ public class ProductSpecification : BaseSpecification<Product>
             case "priceDesc":
                 AddOrderByDescending(x => x.Price);
                 break;
+            case "ratingDesc":
+                AddOrderByDescending(x => x.RatingAverage);
+                break;
+            case "ratingAsc":
+                AddOrderBy(x => x.RatingAverage);
+                break;
             default:
                 AddOrderBy(x => x.Name);
                 break;

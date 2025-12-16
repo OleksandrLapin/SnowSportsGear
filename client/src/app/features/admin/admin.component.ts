@@ -19,6 +19,7 @@ import { MatInputModule } from '@angular/material/input';
 import { forkJoin } from 'rxjs';
 import { SnackbarService } from '../../core/services/snackbar.service';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { AdminReviewsComponent } from './admin-reviews.component';
 
 @Component({
   selector: 'app-admin',
@@ -38,7 +39,8 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
-    MatAutocompleteModule
+    MatAutocompleteModule,
+    AdminReviewsComponent
   ],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss'

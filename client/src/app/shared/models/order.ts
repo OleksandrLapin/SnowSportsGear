@@ -38,6 +38,10 @@ export interface OrderItem {
     price: number
     quantity: number
     size: string
+    reviewId?: number | null
+    reviewRating?: number | null
+    reviewDate?: string | null
+    canReview?: boolean
   }
   
   export interface OrderToCreate {

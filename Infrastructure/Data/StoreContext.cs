@@ -13,6 +13,8 @@ public class StoreContext(DbContextOptions options) : IdentityDbContext<AppUser>
     public DbSet<DeliveryMethod> DeliveryMethods { get; set; }
     public DbSet<Order> Orders { get; set; }
     public DbSet<OrderItem> OrderItems { get; set; }
+    public DbSet<ProductReview> ProductReviews { get; set; }
+    public DbSet<ReviewAudit> ReviewAudits { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

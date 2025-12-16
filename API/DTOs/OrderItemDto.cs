@@ -8,4 +8,8 @@ public class OrderItemDto
     public decimal Price { get; set; }
     public int Quantity { get; set; }
     public required string Size { get; set; }
+    public int? ReviewId { get; set; }
+    public int? ReviewRating { get; set; }
+    public DateTime? ReviewDate { get; set; }
+    public bool CanReview { get; set; }
 }

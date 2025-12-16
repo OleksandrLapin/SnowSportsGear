@@ -5,12 +5,18 @@ using Core.Entities.OrderAggregate;
 using Core.Interfaces;
 using Core.Specifications;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 
 [Authorize]
-public class OrdersController(ICartService cartService, IUnitOfWork unit, IProductRepository productRepository) : BaseApiController
+public class OrdersController(
+    ICartService cartService,
+    IUnitOfWork unit,
+    IProductRepository productRepository,
+    IReviewRepository reviewRepository,
+    UserManager<AppUser> userManager) : BaseApiController
 {
     [HttpPost]
     public async Task<ActionResult<Order>> CreateOrder(CreateOrderDto orderDto)
@@ -101,11 +107,21 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit, IProdu
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<OrderDto>>> GetOrdersForUser()
     {
+        var user = await userManager.GetUserByEmail(User);
+        if (user == null) return Unauthorized();
         var spec = new OrderSpecification(User.GetEmail());
 
         var orders = await unit.Repository<Order>().ListAsync(spec);
 
-        var ordersToReturn = orders.Select(o => o.ToDto()).ToList();
+        var productIds = orders.SelectMany(o => o.OrderItems)
+            .Select(i => i.ItemOrdered.ProductId)
+            .Distinct()
+            .ToList();
+
+        var userReviews = await reviewRepository.GetUserReviewsAsync(user.Id, productIds);
+        var reviewLookup = userReviews.ToDictionary(r => r.ProductId, r => r);
+
+        var ordersToReturn = orders.Select(o => o.ToDto(reviewLookup)).ToList();
 
         return Ok(ordersToReturn);
     }
@@ -119,6 +135,17 @@ public class OrdersController(ICartService cartService, IUnitOfWork unit, IProdu
 
         if (order == null) return NotFound();
 
-        return order.ToDto();
+        var user = await userManager.GetUserByEmail(User);
+        if (user == null) return Unauthorized();
+
+        var productIds = order.OrderItems
+            .Select(i => i.ItemOrdered.ProductId)
+            .Distinct()
+            .ToList();
+
+        var userReviews = await reviewRepository.GetUserReviewsAsync(user.Id, productIds);
+        var reviewLookup = userReviews.ToDictionary(r => r.ProductId, r => r);
+
+        return order.ToDto(reviewLookup);
     }
 }

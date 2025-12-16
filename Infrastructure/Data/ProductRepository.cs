@@ -47,6 +47,8 @@ public class ProductRepository(StoreContext context) : IProductRepository
         {
             "priceAsc" => query.OrderBy(x => x.Price),
             "priceDesc" => query.OrderByDescending(x => x.Price),
+            "ratingDesc" => query.OrderByDescending(x => x.RatingAverage),
+            "ratingAsc" => query.OrderBy(x => x.RatingAverage),
             _ => query.OrderBy(x => x.Name)
         };
 
@@ -79,6 +81,8 @@ public class ProductRepository(StoreContext context) : IProductRepository
         {
             "priceAsc" => query.OrderBy(x => x.Price),
             "priceDesc" => query.OrderByDescending(x => x.Price),
+            "ratingDesc" => query.OrderByDescending(x => x.RatingAverage),
+            "ratingAsc" => query.OrderBy(x => x.RatingAverage),
             _ => query.OrderBy(x => x.Name)
         };
 

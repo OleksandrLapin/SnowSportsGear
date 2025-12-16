@@ -40,7 +40,9 @@ public static class ProductMappingExtensions
             Type = product.Type,
             Brand = product.Brand,
             QuantityInStock = totalQuantity,
-            Variants = variants
+            Variants = variants,
+            RatingAverage = Math.Round(product.RatingAverage, 1),
+            RatingCount = product.RatingCount
         };
     }
 

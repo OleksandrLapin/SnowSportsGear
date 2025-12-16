@@ -1,0 +1,38 @@
+<h2 mat-dialog-title class="text-lg font-semibold">
+  Audit trail
+  <span class="block text-sm font-normal text-gray-600">Review #{{data.reviewId}} · {{data.productName}}</span>
+</h2>
+
+<mat-dialog-content class="space-y-2" *ngIf="!loading; else loadingTpl">
+  @if (audits.length === 0) {
+    <div class="text-sm text-gray-600">No activity recorded yet.</div>
+  } @else {
+    <mat-nav-list>
+      @for (audit of audits; track audit.id) {
+        <mat-list-item>
+          <mat-icon matListItemIcon>history</mat-icon>
+          <div matListItemTitle>{{actionLabel(audit.action)}}</div>
+          <div matListItemLine class="text-xs text-gray-500">
+            {{audit.actorEmail}} · {{audit.createdAt | date: 'medium'}}
+          </div>
+          <div matListItemLine class="text-xs text-gray-600">
+            @if (audit.oldRating || audit.newRating) {
+              Rating: {{audit.oldRating || '—'}} → {{audit.newRating || '—'}}.
+            }
+            @if (audit.oldHidden !== undefined) {
+              Status: {{audit.oldHidden ? 'Hidden' : 'Published'}} → {{audit.newHidden ? 'Hidden' : 'Published'}}.
+            }
+            @if (audit.oldResponse || audit.newResponse) {
+              Reply updated.
+            }
+          </div>
+        </mat-list-item>
+      }
+    </mat-nav-list>
+  }
+</mat-dialog-content>
+
+<ng-template #loadingTpl>
+  <div class="p-4 text-sm text-gray-600">Loading history...</div>
+</ng-template>
+

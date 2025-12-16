@@ -42,6 +42,8 @@ export class ShopComponent {
     {name: 'Alphabetical', value: 'name'},
     {name: 'Price: Low-High', value: 'priceAsc'},
     {name: 'Price: High-Low', value: 'priceDesc'},
+    {name: 'Rating: High-Low', value: 'ratingDesc'},
+    {name: 'Rating: Low-High', value: 'ratingAsc'},
   ]
   shopParams = new ShopParams();
   pageSizeOptions = [5,10,15,20]

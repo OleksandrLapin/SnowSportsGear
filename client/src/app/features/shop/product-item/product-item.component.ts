@@ -10,6 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
 import { NgClass } from '@angular/common';
+import { StarRatingComponent } from '../../../shared/components/rating/star-rating.component';
 
 @Component({
   selector: 'app-product-item',
@@ -26,7 +27,8 @@ import { NgClass } from '@angular/common';
     FormsModule,
     MatFormField,
     MatLabel,
-    NgClass
+    NgClass,
+    StarRatingComponent
   ],
   templateUrl: './product-item.component.html',
   styleUrl: './product-item.component.scss'

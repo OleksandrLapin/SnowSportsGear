@@ -8,6 +8,8 @@ export type Product = {
     brand: string;
     quantityInStock: number;
     variants: ProductVariant[];
+    ratingAverage?: number;
+    ratingCount?: number;
 }
 
 export type ProductVariant = {

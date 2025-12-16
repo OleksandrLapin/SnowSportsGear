@@ -13,4 +13,7 @@ public class Product : BaseEntity, IDtoConvertible
     public byte[]? PictureData { get; set; }
     public string? PictureContentType { get; set; }
     public ICollection<ProductVariant> Variants { get; set; } = new List<ProductVariant>();
+    public ICollection<ProductReview> Reviews { get; set; } = new List<ProductReview>();
+    public double RatingAverage { get; set; }
+    public int RatingCount { get; set; }
 }

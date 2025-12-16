@@ -11,4 +11,6 @@ public class ProductDto
     public required string Brand { get; set; }
     public int QuantityInStock { get; set; }
     public List<ProductVariantDto> Variants { get; set; } = [];
+    public double RatingAverage { get; set; }
+    public int RatingCount { get; set; }
 }

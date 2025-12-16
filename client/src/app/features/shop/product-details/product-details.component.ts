@@ -12,6 +12,8 @@ import { CartService } from '../../../core/services/cart.service';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
 import { SnackbarService } from '../../../core/services/snackbar.service';
+import { StarRatingComponent } from '../../../shared/components/rating/star-rating.component';
+import { ProductReviewsComponent } from './product-reviews.component';
 
 @Component({
   selector: 'app-product-details',
@@ -26,7 +28,9 @@ import { SnackbarService } from '../../../core/services/snackbar.service';
     MatDivider,
     FormsModule,
     MatSelectModule,
-    NgClass
+    NgClass,
+    StarRatingComponent,
+    ProductReviewsComponent
   ],
   templateUrl: './product-details.component.html',
   styleUrl: './product-details.component.scss'
@@ -40,8 +44,12 @@ export class ProductDetailsComponent implements OnInit {
   quantityInCart = 0;
   quantity = 1;
   selectedSize: string | null = null;
+  private shouldScrollToReviews = false;
 
   ngOnInit(): void {
+    this.activatedRoute.fragment.subscribe(fragment => {
+      this.shouldScrollToReviews = fragment === 'reviews';
+    });
     this.loadProduct();
   }
 
@@ -53,6 +61,10 @@ export class ProductDetailsComponent implements OnInit {
         this.product = product;
         this.selectedSize = this.firstAvailableSize();
         this.updateQuantityInCart();
+        if (this.shouldScrollToReviews) {
+          setTimeout(() => this.scrollToReviews(), 100);
+          this.shouldScrollToReviews = false;
+        }
       },
       error: error => console.log(error)
     })
@@ -99,6 +111,30 @@ export class ProductDetailsComponent implements OnInit {
       this.quantityInCart = 0;
     }
     this.quantity = this.quantityInCart || 1;
+  }
+
+  refreshProductRating() {
+    if (!this.product) return;
+    this.shopService.getProduct(this.product.id).subscribe({
+      next: updated => {
+        if (!this.product) {
+          this.product = updated;
+          this.selectedSize = this.firstAvailableSize();
+          this.updateQuantityInCart();
+          return;
+        }
+        this.product.ratingAverage = updated.ratingAverage;
+        this.product.ratingCount = updated.ratingCount;
+      },
+      error: error => console.error(error)
+    })
+  }
+
+  scrollToReviews() {
+    const el = document.getElementById('reviews-section');
+    if (el) {
+      el.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }
   }
 
   getButtonText() {

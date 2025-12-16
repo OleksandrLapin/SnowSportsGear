@@ -1,0 +1,26 @@
+<div class="flex items-center gap-1 select-none">
+  @for (star of stars; track star) {
+    <button
+      type="button"
+      class="p-0 border-0 bg-transparent leading-none"
+      [class.cursor-pointer]="!readonly || clickable"
+      (click)="onStarClick(star)"
+      (mouseenter)="onStarEnter(star)"
+      (mouseleave)="onStarLeave()"
+      [attr.aria-label]="ariaLabel">
+      <mat-icon class="text-amber-400"
+        [ngClass]="{
+          'text-base': size === 'sm',
+          'text-xl': size === 'md'
+        }"
+      >
+        {{ iconFor(star) }}
+      </mat-icon>
+    </button>
+  }
+  @if (showValue) {
+    <span class="text-sm font-semibold text-gray-800">
+      {{ (hoverValue ?? value).toFixed(1) }}
+    </span>
+  }
+</div>

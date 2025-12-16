@@ -46,6 +46,17 @@
                                     class="w-10 h-10">
                                 <span>{{item.productName}}</span>
                             </div>
+                            <div class="mt-2 flex items-center gap-3 text-xs text-gray-700">
+                                @if (item.reviewRating) {
+                                    <app-star-rating [value]="item.reviewRating" size="sm"></app-star-rating>
+                                    <span class="text-gray-500">{{item.reviewDate | date: 'mediumDate'}}</span>
+                                    <button mat-button color="primary" class="px-2" (click)="openReviewDialog(item)">Edit review</button>
+                                } @else if (item.canReview) {
+                                    <button mat-stroked-button color="primary" class="px-2" (click)="openReviewDialog(item)">Write a review</button>
+                                } @else if (item.reviewId) {
+                                    <button mat-stroked-button color="primary" class="px-2" (click)="openReviewDialog(item)">Edit review</button>
+                                }
+                            </div>
                         </td>
                         <td class="p-4">{{item.size}}</td>
                         <td class="p-4">x{{item.quantity}}</td>

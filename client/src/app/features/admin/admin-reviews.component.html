@@ -1,0 +1,162 @@
+<div class="space-y-4">
+  <mat-card>
+    <form class="flex flex-wrap gap-3 items-end" [formGroup]="filters">
+      <mat-form-field appearance="outline" class="w-56">
+        <mat-label>Search title/description</mat-label>
+        <input matInput formControlName="search" placeholder="Search text">
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-40">
+        <mat-label>Status</mat-label>
+        <mat-select formControlName="status">
+          @for (status of statusOptions; track status) {
+            <mat-option [value]="status">{{status | titlecase}}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-32">
+        <mat-label>Product ID</mat-label>
+        <input matInput type="number" formControlName="productId" min="1">
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-40">
+        <mat-label>Brand</mat-label>
+        <mat-select formControlName="brand">
+          <mat-option value="">Any</mat-option>
+          @for (brand of brands; track brand) {
+            <mat-option [value]="brand">{{brand}}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-40">
+        <mat-label>Type</mat-label>
+        <mat-select formControlName="type">
+          <mat-option value="">Any</mat-option>
+          @for (type of types; track type) {
+            <mat-option [value]="type">{{type}}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-28">
+        <mat-label>Min rating</mat-label>
+        <input type="number" min="1" max="5" matInput formControlName="minRating">
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-28">
+        <mat-label>Max rating</mat-label>
+        <input type="number" min="1" max="5" matInput formControlName="maxRating">
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-56">
+        <mat-label>User email</mat-label>
+        <input matInput formControlName="userEmail">
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-44">
+        <mat-label>From</mat-label>
+        <input matInput type="date" formControlName="from">
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-44">
+        <mat-label>To</mat-label>
+        <input matInput type="date" formControlName="to">
+      </mat-form-field>
+
+      <div class="flex gap-2 ml-auto">
+        <button mat-flat-button color="primary" type="button" (click)="applyFilters()">Apply</button>
+        <button mat-stroked-button type="button" (click)="resetFilters()">Reset</button>
+      </div>
+    </form>
+  </mat-card>
+
+  <mat-card>
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+      <h3 class="text-xl font-semibold">Customer reviews</h3>
+      <mat-form-field appearance="outline" class="w-full md:w-60">
+        <mat-label>Sort</mat-label>
+        <mat-select [value]="params.sort" (valueChange)="onSortChange($event)">
+          @for (option of sortOptions; track option.value) {
+            <mat-option [value]="option.value">{{option.label}}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    @if (loading) {
+      <div class="p-4 text-sm text-gray-600">Loading reviews...</div>
+    } @else if (reviews?.data?.length) {
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-gray-700">
+            <tr>
+              <th class="px-4 py-2 text-left">Product</th>
+              <th class="px-4 py-2 text-left">Rating</th>
+              <th class="px-4 py-2 text-left">Title</th>
+              <th class="px-4 py-2 text-left">Status</th>
+              <th class="px-4 py-2 text-left">User</th>
+              <th class="px-4 py-2 text-left">Date</th>
+              <th class="px-4 py-2 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            @for (review of (reviews?.data ?? []); track review.id) {
+              <tr class="align-top">
+                <td class="px-4 py-3">
+                  <div class="font-semibold">{{review.productName}}</div>
+                  <div class="text-xs text-gray-600">{{review.brand}} · {{review.type}}</div>
+                </td>
+                <td class="px-4 py-3">
+                  <app-star-rating [value]="review.rating" size="sm"></app-star-rating>
+                </td>
+                <td class="px-4 py-3">
+                  <div class="font-medium">{{review.title || '—'}}</div>
+                  <div class="text-xs text-gray-600 line-clamp-2">{{review.content || ''}}</div>
+                </td>
+                <td class="px-4 py-3">
+                  <span
+                    class="px-2 py-1 text-xs rounded-full"
+                    [ngClass]="review.isHidden ? 'bg-gray-200 text-gray-700' : 'bg-green-100 text-green-800'">
+                    {{review.isHidden ? 'Hidden' : 'Published'}}
+                  </span>
+                </td>
+                <td class="px-4 py-3">
+                  <div>{{review.author}}</div>
+                  <div class="text-xs text-gray-600">{{review.authorEmail}}</div>
+                </td>
+                <td class="px-4 py-3 text-xs text-gray-700">
+                  {{review.createdAt | date: 'medium'}}
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex flex-wrap gap-2">
+                    <button mat-icon-button color="primary" matTooltip="Edit" (click)="openEdit(review)">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button color="primary" matTooltip="Reply" (click)="openReply(review)">
+                      <mat-icon>reply</mat-icon>
+                    </button>
+                    <button mat-icon-button matTooltip="Toggle visibility" (click)="toggleVisibility(review)">
+                      <mat-icon>{{review.isHidden ? 'visibility' : 'visibility_off'}}</mat-icon>
+                    </button>
+                    <button mat-icon-button matTooltip="Audit history" (click)="openAudit(review)">
+                      <mat-icon>history</mat-icon>
+                    </button>
+                    <button mat-icon-button color="warn" matTooltip="Delete" (click)="deleteReview(review)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <div class="p-4 text-sm text-gray-600">No reviews found.</div>
+    }
+
+    <mat-paginator
+      class="bg-white"
+      [length]="reviews?.count || 0"
+      [pageSize]="params.pageSize"
+      [pageIndex]="params.pageNumber - 1"
+      [pageSizeOptions]="[5,10,20]"
+      (page)="onPageChange($event)">
+    </mat-paginator>
+  </mat-card>
+</div>
