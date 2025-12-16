@@ -7,7 +7,11 @@
         <h2 class="text-sm font-semibold uppercase">{{product.name}}</h2>
         <p class="font-light">{{product.price | currency}}</p>
         <div class="flex items-center gap-2 text-xs text-gray-600 mt-1">
-          <app-star-rating [value]="product.ratingAverage || 0" size="sm"></app-star-rating>
+          <app-star-rating 
+            [value]="product.ratingAverage || 0" 
+            [showValue]="true"
+            size="sm">
+          </app-star-rating>
           @if (product.ratingCount && product.ratingCount > 0) {
             <a 
               [routerLink]="['/shop', product.id]" 
