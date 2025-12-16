@@ -4,6 +4,7 @@ using Core.Entities;
 using Core.Entities.OrderAggregate;
 using Core.Interfaces;
 using Core.Specifications;
+using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -105,22 +106,33 @@ public class OrdersController(
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<OrderDto>>> GetOrdersForUser()
+    public async Task<ActionResult<IReadOnlyList<OrderDto>>> GetOrdersForUser(
+        [FromServices] ILogger<OrdersController> log)
     {
+        var sw = Stopwatch.StartNew();
+        log.LogInformation("GetOrdersForUser started");
+
         var user = await userManager.GetUserByEmail(User);
+        log.LogInformation("GetUserByEmail completed in {Elapsed}ms", sw.ElapsedMilliseconds);
+
         if (user == null) return Unauthorized();
         var spec = new OrderSpecification(User.GetEmail());
 
+        log.LogInformation("Calling ListAsync(orders) at {Elapsed}ms", sw.ElapsedMilliseconds);
         var orders = await unit.Repository<Order>().ListAsync(spec);
+        log.LogInformation("ListAsync(orders) completed in {Elapsed}ms", sw.ElapsedMilliseconds);
 
         var productIds = orders.SelectMany(o => o.OrderItems)
             .Select(i => i.ItemOrdered.ProductId)
             .Distinct()
             .ToList();
 
+        log.LogInformation("Calling GetUserReviewsAsync at {Elapsed}ms", sw.ElapsedMilliseconds);
         var userReviews = await reviewRepository.GetUserReviewsAsync(user.Id, productIds);
+        log.LogInformation("GetUserReviewsAsync completed in {Elapsed}ms", sw.ElapsedMilliseconds);
         var reviewLookup = userReviews.ToDictionary(r => r.ProductId, r => r);
 
+        log.LogInformation("Total mapping completed in {Elapsed}ms", sw.ElapsedMilliseconds);
         var ordersToReturn = orders.Select(o => o.ToDto(reviewLookup)).ToList();
 
         return Ok(ordersToReturn);

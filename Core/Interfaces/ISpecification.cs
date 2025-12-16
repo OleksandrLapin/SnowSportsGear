@@ -10,6 +10,8 @@ public interface ISpecification<T>
     List<Expression<Func<T, object>>> Includes {get; }
     List<string> IncludeStrings {get; } // For ThenInclude
     bool IsDistinct { get; }
+    bool IsNoTracking { get; }
+    bool UseSplitQuery { get; }
     int Take { get; }
     int Skip { get; }
     bool IsPagingEnabled { get; }

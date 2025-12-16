@@ -59,8 +59,8 @@ public class AdminReviewsController(IReviewRepository reviewRepo, UserManager<Ap
         };
 
         review.Rating = dto.Rating;
-        review.Title = dto.Title;
-        review.Content = dto.Content;
+        review.Title = string.IsNullOrWhiteSpace(dto.Title) ? null : dto.Title.Trim();
+        review.Content = string.IsNullOrWhiteSpace(dto.Content) ? null : dto.Content.Trim();
         review.IsHidden = dto.IsHidden;
         review.UpdatedAt = now;
 
@@ -75,7 +75,8 @@ public class AdminReviewsController(IReviewRepository reviewRepo, UserManager<Ap
         await reviewRepo.UpdateProductRatingAsync(review.ProductId);
         await reviewRepo.SaveChangesAsync();
 
-        return Ok(review.ToAdminDto(actor.Id));
+        var refreshed = await reviewRepo.GetReviewByIdAsync(review.Id);
+        return Ok(refreshed?.ToAdminDto(actor.Id) ?? review.ToAdminDto(actor.Id));
     }
 
     [InvalidateCache("api/products|")]

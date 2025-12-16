@@ -77,9 +77,10 @@ public class ReviewsController(IReviewRepository reviewRepo, IProductRepository 
         {
             ProductId = productId,
             UserId = user.Id,
+            User = user,
             Rating = dto.Rating,
-            Title = dto.Title,
-            Content = dto.Content,
+            Title = string.IsNullOrWhiteSpace(dto.Title) ? null : dto.Title.Trim(),
+            Content = string.IsNullOrWhiteSpace(dto.Content) ? null : dto.Content.Trim(),
             CreatedAt = now,
             UpdatedAt = now,
             IsHidden = false,
@@ -111,7 +112,8 @@ public class ReviewsController(IReviewRepository reviewRepo, IProductRepository 
         await reviewRepo.UpdateProductRatingAsync(productId);
         await reviewRepo.SaveChangesAsync();
 
-        return Ok(review.ToDto(user.Id));
+        var saved = await reviewRepo.GetReviewByIdAsync(review.Id);
+        return Ok(saved?.ToDto(user.Id) ?? review.ToDto(user.Id));
     }
 
     [InvalidateCache("api/products|")]
@@ -147,8 +149,8 @@ public class ReviewsController(IReviewRepository reviewRepo, IProductRepository 
         };
 
         review.Rating = dto.Rating;
-        review.Title = dto.Title;
-        review.Content = dto.Content;
+        review.Title = string.IsNullOrWhiteSpace(dto.Title) ? null : dto.Title.Trim();
+        review.Content = string.IsNullOrWhiteSpace(dto.Content) ? null : dto.Content.Trim();
         review.UpdatedAt = now;
 
         reviewRepo.Update(review);
@@ -162,7 +164,8 @@ public class ReviewsController(IReviewRepository reviewRepo, IProductRepository 
         await reviewRepo.UpdateProductRatingAsync(productId);
         await reviewRepo.SaveChangesAsync();
 
-        return Ok(review.ToDto(user.Id));
+        var saved = await reviewRepo.GetReviewByIdAsync(review.Id);
+        return Ok(saved?.ToDto(user.Id) ?? review.ToDto(user.Id));
     }
 
     [InvalidateCache("api/products|")]

@@ -15,6 +15,10 @@ public class BaseSpecification<T>(Expression<Func<T, bool>>? criteria) : ISpecif
 
     public bool IsDistinct { get; private set; }
 
+    public bool IsNoTracking { get; private set; }
+
+    public bool UseSplitQuery { get; private set; }
+
     public int Take { get; private set; }
 
     public int Skip { get; private set; }
@@ -58,6 +62,16 @@ public class BaseSpecification<T>(Expression<Func<T, bool>>? criteria) : ISpecif
     protected void ApplyDistinct()
     {
         IsDistinct = true;
+    }
+
+    protected void ApplyNoTracking()
+    {
+        IsNoTracking = true;
+    }
+
+    protected void ApplySplitQuery()
+    {
+        UseSplitQuery = true;
     }
 
     protected void ApplyPaging(int skip, int take)

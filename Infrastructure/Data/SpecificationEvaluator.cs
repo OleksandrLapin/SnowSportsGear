@@ -13,6 +13,16 @@ public class SpecificationEvaluator<T> where T : BaseEntity
             query = query.Where(spec.Criteria); // x => x.Brand == brand
         }
 
+        if (spec.IsNoTracking)
+        {
+            query = query.AsNoTracking();
+        }
+
+        if (spec.UseSplitQuery)
+        {
+            query = query.AsSplitQuery();
+        }
+
         if (spec.OrderBy != null)
         {
             query = query.OrderBy(spec.OrderBy);
