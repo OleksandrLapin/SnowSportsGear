@@ -1,0 +1,41 @@
+<div class="max-w-3xl mx-auto py-10">
+  <h2 class="text-2xl font-semibold mb-6">Account settings</h2>
+
+  <mat-card class="mb-6">
+    <div class="p-4">
+      <h3 class="text-xl font-semibold mb-4">Profile</h3>
+      <form [formGroup]="profileForm" class="grid grid-cols-1 md:grid-cols-2 gap-4" (ngSubmit)="saveProfile()">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>First name</mat-label>
+          <input matInput formControlName="firstName">
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Last name</mat-label>
+          <input matInput formControlName="lastName">
+        </mat-form-field>
+        <div class="md:col-span-2 flex justify-end">
+          <button mat-flat-button color="primary" type="submit">Save profile</button>
+        </div>
+      </form>
+    </div>
+  </mat-card>
+
+  <mat-card>
+    <div class="p-4">
+      <h3 class="text-xl font-semibold mb-4">Change password</h3>
+      <form [formGroup]="passwordForm" class="grid grid-cols-1 md:grid-cols-2 gap-4" (ngSubmit)="changePassword()">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>Current password</mat-label>
+          <input matInput type="password" formControlName="currentPassword">
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>New password</mat-label>
+          <input matInput type="password" formControlName="newPassword">
+        </mat-form-field>
+        <div class="md:col-span-2 flex justify-end">
+          <button mat-flat-button color="primary" type="submit">Update password</button>
+        </div>
+      </form>
+    </div>
+  </mat-card>
+</div>

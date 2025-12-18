@@ -64,4 +64,14 @@ export class AccountService {
   getAuthState() {
     return this.http.get<{isAuthenticated: boolean}>(this.baseUrl + 'account/auth-status');
   }
+
+  updateProfile(payload: {firstName: string; lastName: string}) {
+    return this.http.post<User>(this.baseUrl + 'account/profile', payload).pipe(
+      tap(user => this.currentUser.set(user))
+    );
+  }
+
+  changePassword(payload: {currentPassword: string; newPassword: string}) {
+    return this.http.post(this.baseUrl + 'account/change-password', payload);
+  }
 }
