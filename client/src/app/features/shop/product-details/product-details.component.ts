@@ -154,6 +154,16 @@ export class ProductDetailsComponent implements OnInit {
     return this.product.variants.map(v => v.size);
   }
 
+  get hasSale(): boolean {
+    return !!(this.product && this.product.salePrice && this.product.salePrice > 0 && this.product.salePrice < this.product.price);
+  }
+
+  get currentPrice(): number {
+    if (!this.product) return 0;
+    if (this.hasSale && this.product?.salePrice) return this.product.salePrice;
+    return this.product.price;
+  }
+
   private firstAvailableSize(): string | null {
     const anyAvailable = this.product?.variants.find(v => v.quantityInStock > 0)?.size;
     return anyAvailable ?? this.availableSizes[0] ?? null;

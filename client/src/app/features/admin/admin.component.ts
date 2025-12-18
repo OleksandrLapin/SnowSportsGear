@@ -16,6 +16,7 @@ import { Product } from '../../shared/models/product';
 import { FormArray, FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { forkJoin } from 'rxjs';
 import { SnackbarService } from '../../core/services/snackbar.service';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -40,6 +41,7 @@ import { AdminReviewsComponent } from './admin-reviews.component';
     MatFormFieldModule,
     MatInputModule,
     MatAutocompleteModule,
+    MatCheckboxModule,
     AdminReviewsComponent
   ],
   templateUrl: './admin.component.html',
@@ -55,7 +57,7 @@ export class AdminComponent implements OnInit {
   orderParams = new OrderParams();
   totalItems = 0;
   statusOptions = ['All', 'PaymentReceived', 'PaymentMismatch', 'Refunded', 'Pending'];
-  productColumns = ['id', 'name', 'price', 'brand', 'type', 'quantityInStock', 'actions'];
+  productColumns = ['id', 'name', 'price', 'brand', 'type', 'color', 'quantityInStock', 'actions'];
   productDataSource = new MatTableDataSource<Product>([]);
   productPageIndex = 1;
   productPageSize = 10;
@@ -76,6 +78,10 @@ export class AdminComponent implements OnInit {
     name: ['', Validators.required],
     description: ['', Validators.required],
     price: [0, [Validators.required, Validators.min(0.01)]],
+    salePrice: [null as number | null],
+    lowestPrice: [null as number | null],
+    color: [''],
+    onSale: [false],
     type: ['', Validators.required],
     brand: ['', Validators.required],
     variants: this.fb.array([
@@ -188,8 +194,11 @@ export class AdminComponent implements OnInit {
         {size: 'XL', quantityInStock: 12}
       ];
     variantSource.forEach(v => this.variants.push(this.createVariantGroup(v.size, v.quantityInStock)));
+    const onSale = !!(product.salePrice && product.salePrice > 0 && product.salePrice < product.price);
     this.productForm.patchValue({
       ...product,
+      salePrice: onSale ? product.salePrice : null,
+      onSale,
       variants: this.variants.value
     });
     this.imagePreview = product.pictureUrl || null;
@@ -207,6 +216,10 @@ export class AdminComponent implements OnInit {
       name: '',
       description: '',
       price: 0,
+      salePrice: null,
+      lowestPrice: null,
+      color: '',
+      onSale: false,
       type: '',
       brand: '',
       variants: this.variants.value
@@ -218,11 +231,20 @@ export class AdminComponent implements OnInit {
 
   submitProduct() {
     if (this.productForm.invalid) return;
-    const product = this.productForm.value as Product;
+    const product = this.productForm.value as Product & { onSale: boolean };
     const formData = new FormData();
     formData.append('name', product.name ?? '');
     formData.append('description', product.description ?? '');
     formData.append('price', product.price?.toString() ?? '0');
+    if (product.onSale && product.salePrice && product.salePrice > 0) {
+      formData.append('salePrice', product.salePrice.toString());
+    }
+    if (product.lowestPrice && product.lowestPrice > 0) {
+      formData.append('lowestPrice', product.lowestPrice.toString());
+    }
+    if (product.color) {
+      formData.append('color', product.color);
+    }
     formData.append('type', product.type ?? '');
     formData.append('brand', product.brand ?? '');
     (this.variants.controls as any[]).forEach((ctrl, index) => {
@@ -351,7 +373,7 @@ export class AdminComponent implements OnInit {
       const search = f.search?.toLowerCase() || '';
       const brand = f.brand?.toLowerCase() || '';
       const type = f.type?.toLowerCase() || '';
-      const matchesSearch = !search || data.name.toLowerCase().includes(search) || data.description.toLowerCase().includes(search);
+      const matchesSearch = !search || data.name.toLowerCase().includes(search) || data.description.toLowerCase().includes(search) || (data.color?.toLowerCase().includes(search) ?? false);
       const matchesBrand = !brand || data.brand.toLowerCase().includes(brand);
       const matchesType = !type || data.type.toLowerCase().includes(type);
       return matchesSearch && matchesBrand && matchesType;

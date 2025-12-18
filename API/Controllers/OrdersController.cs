@@ -52,10 +52,11 @@ public class OrdersController(
                 PictureUrl = item.PictureUrl
             };
 
+            var priceToUse = productItem.SalePrice ?? productItem.Price;
             var orderItem = new OrderItem
             {
                 ItemOrdered = itemOrdered,
-                Price = productItem.Price,
+                Price = priceToUse,
                 Quantity = item.Quantity,
                 Size = item.Size
             };

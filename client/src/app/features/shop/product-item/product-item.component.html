@@ -2,10 +2,26 @@
     <mat-card appearance="raised" [routerLink]="['/shop', product.id]" class="product-card">
       <div class="product-image">
         <img mat-card-image [src]="product.pictureUrl" alt="Product image">
+        @if (product.salePrice && product.salePrice > 0 && product.salePrice < product.price) {
+          <span class="absolute top-2 left-2 bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded">Promo</span>
+        }
       </div>
       <mat-card-content class="mt-2">
         <h2 class="text-sm font-semibold uppercase">{{product.name}}</h2>
-        <p class="font-light">{{product.price | currency}}</p>
+        <div class="flex items-baseline gap-2">
+          @if (product.salePrice && product.salePrice > 0 && product.salePrice < product.price) {
+            <span class="text-lg font-bold text-red-600">{{product.salePrice | currency}}</span>
+            <span class="text-sm line-through text-gray-500">{{product.price | currency}}</span>
+          } @else {
+            <p class="font-light">{{product.price | currency}}</p>
+          }
+        </div>
+        @if (product.lowestPrice) {
+          <p class="text-xs text-gray-600">Lowest national price: {{product.lowestPrice | currency}}</p>
+        }
+        @if (product.color) {
+          <p class="text-xs text-gray-600 mt-1">Color: {{product.color}}</p>
+        }
         <div class="flex items-center gap-2 text-xs text-gray-600 mt-1">
           <app-star-rating 
             [value]="product.ratingAverage || 0" 

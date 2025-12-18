@@ -85,9 +85,10 @@ public class StoreContextSeed
             }
         }
 
+        var productsInDb = await context.Products.ToListAsync();
+
         if (!await context.ProductReviews.AnyAsync())
         {
-            var productsInDb = await context.Products.AsNoTracking().ToListAsync();
             var random = new Random(42);
             var adminResponderEmail = adminUser.Email ?? "admin@test.com";
 
@@ -173,6 +174,8 @@ public class StoreContextSeed
             await context.SaveChangesAsync();
         }
 
+        await ApplyPricingMetaAsync(context, productsInDb);
+
         if (!context.DeliveryMethods.Any())
         {
             var dmData = await File
@@ -221,6 +224,52 @@ public class StoreContextSeed
             new() { Size = "L", QuantityInStock = 10 },
             new() { Size = "XL", QuantityInStock = 12 },
         };
+    }
+
+    private static async Task ApplyPricingMetaAsync(StoreContext context, List<Product> productsInDb)
+    {
+        if (productsInDb.Count == 0) return;
+
+        var random = new Random(123);
+        var needsSave = false;
+
+        // ensure lowest national price for all products
+        foreach (var product in productsInDb)
+        {
+            if (!product.LowestPrice.HasValue || product.LowestPrice <= 0)
+            {
+                // set between 85% and 95% of current price
+                var factor = 0.85m + (decimal)(random.NextDouble() * 0.1);
+                product.LowestPrice = Math.Round(product.Price * factor, 2);
+                needsSave = true;
+            }
+        }
+
+        // apply promo price to ~10% of products (only if not already on sale)
+        var saleTargetCount = Math.Max(1, (int)Math.Ceiling(productsInDb.Count * 0.1));
+        var shuffled = productsInDb.OrderBy(_ => random.Next()).ToList();
+        var selectedForSale = shuffled.Take(saleTargetCount);
+
+        foreach (var product in selectedForSale)
+        {
+            if (product.SalePrice.HasValue && product.SalePrice > 0 && product.SalePrice < product.Price)
+            {
+                continue;
+            }
+
+            var discountFactor = 0.8m + (decimal)(random.NextDouble() * 0.1); // 10-20% off
+            var salePrice = Math.Round(product.Price * discountFactor, 2);
+
+            if (salePrice >= product.Price) continue;
+
+            product.SalePrice = salePrice;
+            needsSave = true;
+        }
+
+        if (needsSave)
+        {
+            await context.SaveChangesAsync();
+        }
     }
 
     private static async Task<List<AppUser>> EnsureSampleUsers(UserManager<AppUser> userManager)

@@ -5,7 +5,7 @@ namespace Core.Specifications;
 public class ProductSpecification : BaseSpecification<Product>
 {
     public ProductSpecification(ProductSpecParams specParams) : base(x =>
-        (string.IsNullOrEmpty(specParams.Search) || x.Name.Contains(specParams.Search)) &&
+        (string.IsNullOrEmpty(specParams.Search) || x.Name.Contains(specParams.Search) || (x.Color != null && x.Color.Contains(specParams.Search))) &&
         (specParams.Brands.Count == 0 || specParams.Brands.Contains(x.Brand)) &&
         (specParams.Types.Count == 0 || specParams.Types.Contains(x.Type))
     )
@@ -15,10 +15,10 @@ public class ProductSpecification : BaseSpecification<Product>
         switch (specParams.Sort)
         {
             case "priceAsc":
-                AddOrderBy(x => x.Price);
+                AddOrderBy(x => x.SalePrice ?? x.Price);
                 break;
             case "priceDesc":
-                AddOrderByDescending(x => x.Price);
+                AddOrderByDescending(x => x.SalePrice ?? x.Price);
                 break;
             case "ratingDesc":
                 AddOrderByDescending(x => x.RatingAverage);

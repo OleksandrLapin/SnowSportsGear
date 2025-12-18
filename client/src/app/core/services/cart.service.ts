@@ -126,10 +126,11 @@ async removeItemFromCart(productId: number, quantity = 1, size?: string) {
   }
 
   private mapProductToCartItem(item: Product, size: string): CartItem {
+    const priceToUse = item.salePrice && item.salePrice > 0 ? item.salePrice : item.price;
     return {
       productId: item.id,
       productName: item.name,
-      price: item.price,
+      price: priceToUse,
       quantity: 0,
       pictureUrl: item.pictureUrl ?? '',
       brand: item.brand,

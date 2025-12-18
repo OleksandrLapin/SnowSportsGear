@@ -20,6 +20,12 @@ public class CreateProductDto
     [Required]
     public string Brand { get; set; } = string.Empty;
 
+    public decimal? SalePrice { get; set; }
+
+    public decimal? LowestPrice { get; set; }
+
+    public string? Color { get; set; }
+
     public IFormFile? Image { get; set; }
 
     [MinLength(1, ErrorMessage = "At least one variant is required")]

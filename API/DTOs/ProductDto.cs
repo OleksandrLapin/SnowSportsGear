@@ -13,4 +13,7 @@ public class ProductDto
     public List<ProductVariantDto> Variants { get; set; } = [];
     public double RatingAverage { get; set; }
     public int RatingCount { get; set; }
+    public decimal? SalePrice { get; set; }
+    public decimal? LowestPrice { get; set; }
+    public string? Color { get; set; }
 }

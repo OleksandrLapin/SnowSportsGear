@@ -94,6 +94,9 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         product.Price = dto.Price;
         product.Brand = dto.Brand;
         product.Type = dto.Type;
+        product.Color = string.IsNullOrWhiteSpace(dto.Color) ? null : dto.Color.Trim();
+        product.SalePrice = NormalizeSalePrice(dto.SalePrice, dto.Price);
+        product.LowestPrice = NormalizePrice(dto.LowestPrice);
         ApplyVariants(product, dto.Variants);
 
         await SetImageData(product, dto.Image);
@@ -152,6 +155,9 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
             Price = dto.Price,
             Brand = dto.Brand,
             Type = dto.Type,
+            Color = string.IsNullOrWhiteSpace(dto.Color) ? null : dto.Color.Trim(),
+            SalePrice = NormalizeSalePrice(dto.SalePrice, dto.Price),
+            LowestPrice = NormalizePrice(dto.LowestPrice),
             Variants = []
         };
 
@@ -205,6 +211,20 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
                 });
             }
         }
+    }
+
+    private static decimal? NormalizeSalePrice(decimal? salePrice, decimal basePrice)
+    {
+        if (!salePrice.HasValue) return null;
+        if (salePrice.Value <= 0) return null;
+        if (salePrice.Value >= basePrice) return null;
+        return Math.Round(salePrice.Value, 2);
+    }
+
+    private static decimal? NormalizePrice(decimal? price)
+    {
+        if (!price.HasValue || price.Value <= 0) return null;
+        return Math.Round(price.Value, 2);
     }
 
     private string GetBaseUrl()

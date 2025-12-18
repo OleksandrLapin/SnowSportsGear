@@ -24,10 +24,30 @@
                     <p>You have {{quantityInCart}} of this item in your cart</p>
                     
                     <div class="mt-4 items-center gap-4 flex">
-                        <p class="text-3xl font-extrabold text-gray-900">
-                            {{product.price | currency}}
-                        </p>
+                        @if (hasSale) {
+                            <div class="flex items-baseline gap-3">
+                                <p class="text-3xl font-extrabold text-red-600">
+                                    {{currentPrice | currency}}
+                                </p>
+                                <p class="text-lg line-through text-gray-500">
+                                    {{product.price | currency}}
+                                </p>
+                                <span class="px-2 py-1 text-xs font-semibold bg-red-100 text-red-700 rounded">Promotion</span>
+                            </div>
+                        } @else {
+                            <p class="text-3xl font-extrabold text-gray-900">
+                                {{product.price | currency}}
+                            </p>
+                        }
                     </div>
+                    @if (product.lowestPrice) {
+                        <p class="text-sm text-gray-600 mt-1">
+                            Lowest national price: {{product.lowestPrice | currency}}
+                        </p>
+                    }
+                    @if (product.color) {
+                        <p class="text-sm text-gray-700 mt-2">Color: <span class="font-semibold">{{product.color}}</span></p>
+                    }
                     @if (stockWarning) {
                         <div class="text-sm text-red-600 mt-1 font-semibold">{{stockWarning}}</div>
                     }

@@ -10,6 +10,9 @@ export type Product = {
     variants: ProductVariant[];
     ratingAverage?: number;
     ratingCount?: number;
+    salePrice?: number | null;
+    lowestPrice?: number | null;
+    color?: string | null;
 }
 
 export type ProductVariant = {
