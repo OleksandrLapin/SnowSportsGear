@@ -357,10 +357,10 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.HasIndex("UserId");
-
                     b.HasIndex("ProductId", "UserId")
                         .IsUnique();
+
+                    b.HasIndex("UserId", "ProductId");
 
                     b.ToTable("ProductReviews");
                 });
@@ -489,13 +489,13 @@ namespace Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "90116d3e-42c0-4dea-9c8d-65a1eab2d417",
+                            Id = "3071ff28-a856-4bff-8d16-65a729dbf3c0",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "87d8eea2-58e0-4a88-a4b4-9a1ca13f3204",
+                            Id = "1eeb7c27-c590-44ec-b013-2b97b1e95802",
                             Name = "Customer",
                             NormalizedName = "CUSTOMER"
                         });

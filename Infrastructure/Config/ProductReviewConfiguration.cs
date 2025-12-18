@@ -18,6 +18,7 @@ public class ProductReviewConfiguration : IEntityTypeConfiguration<ProductReview
         builder.Property(r => r.AdminResponderId).HasMaxLength(450);
         builder.Property(r => r.AdminResponderEmail).HasMaxLength(256);
         builder.HasIndex(r => new { r.ProductId, r.UserId }).IsUnique();
+        builder.HasIndex(r => new { r.UserId, r.ProductId });
 
         builder.HasOne(r => r.Product)
             .WithMany(p => p.Reviews)

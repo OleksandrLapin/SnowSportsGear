@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { Order, OrderToCreate } from '../../shared/models/order';
+import { OrderSummary } from '../../shared/models/orderSummary';
 
 @Injectable({
   providedIn: 'root'
@@ -16,7 +17,7 @@ export class OrderService {
   }
 
   getOrdersForUser() {
-    return this.http.get<Order[]>(this.baseUrl + 'orders');
+    return this.http.get<OrderSummary[]>(this.baseUrl + 'orders');
   }
 
   getOrderDetailed(id: number) {

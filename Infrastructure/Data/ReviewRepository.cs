@@ -175,10 +175,21 @@ public class ReviewRepository(StoreContext context) : IReviewRepository
         var ids = productIds.Distinct().ToList();
         if (ids.Count == 0) return [];
 
-        return await context.ProductReviews
+        if (ids.Count <= 200)
+        {
+            return await context.ProductReviews
+                .AsNoTracking()
+                .Where(r => r.UserId == userId && ids.Contains(r.ProductId))
+                .ToListAsync();
+        }
+
+        var idSet = ids.ToHashSet();
+        var userReviews = await context.ProductReviews
             .AsNoTracking()
-            .Where(r => r.UserId == userId && ids.Contains(r.ProductId))
+            .Where(r => r.UserId == userId)
             .ToListAsync();
+
+        return userReviews.Where(r => idSet.Contains(r.ProductId)).ToList();
     }
 
     public async Task<int?> GetOrderIdForUserProductAsync(string email, int productId, int? orderId = null)

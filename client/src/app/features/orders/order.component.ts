@@ -1,6 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { OrderService } from '../../core/services/order.service';
-import { Order } from '../../shared/models/order';
+import { OrderSummary } from '../../shared/models/orderSummary';
 import { RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 
@@ -17,7 +17,7 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 })
 export class OrderComponent implements OnInit {
   private orderService = inject(OrderService);
-  orders: Order[] = [];
+  orders: OrderSummary[] = [];
 
   ngOnInit(): void {
     this.orderService.getOrdersForUser().subscribe({
