@@ -38,6 +38,17 @@ export class ProductItemComponent {
   cartService = inject(CartService);
   selectedSize: string | null = null;
 
+  get inCartCount(): number {
+    if (!this.product) return 0;
+    return this.cartService.cart()?.items
+      .filter(i => i.productId === this.product!.id)
+      .reduce((sum, i) => sum + i.quantity, 0) ?? 0;
+  }
+
+  get isInCart(): boolean {
+    return this.inCartCount > 0;
+  }
+
   addToCart(event: Event) {
     event.stopPropagation();
     if (!this.product || !this.selectedSize) return;

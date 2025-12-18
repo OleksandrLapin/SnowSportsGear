@@ -19,6 +19,12 @@
         @if (product.lowestPrice) {
           <p class="text-xs text-gray-600">Lowest national price: {{product.lowestPrice | currency}}</p>
         }
+        @if (isInCart) {
+          <p class="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-1 rounded mt-1">
+            <mat-icon fontIcon="shopping_cart" class="!text-base"></mat-icon>
+            In cart: {{inCartCount}}
+          </p>
+        }
         @if (product.color) {
           <p class="text-xs text-gray-600 mt-1">Color: {{product.color}}</p>
         }

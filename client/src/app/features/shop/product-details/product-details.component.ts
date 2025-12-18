@@ -154,6 +154,13 @@ export class ProductDetailsComponent implements OnInit {
     return this.product.variants.map(v => v.size);
   }
 
+  get anyInCart(): number {
+    if (!this.product) return 0;
+    return this.cartService.cart()?.items
+      .filter(i => i.productId === this.product!.id)
+      .reduce((sum, i) => sum + i.quantity, 0) ?? 0;
+  }
+
   get hasSale(): boolean {
     return !!(this.product && this.product.salePrice && this.product.salePrice > 0 && this.product.salePrice < this.product.price);
   }
