@@ -17,6 +17,7 @@ import { FormArray, FormBuilder, FormControl, ReactiveFormsModule, Validators } 
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { forkJoin } from 'rxjs';
 import { SnackbarService } from '../../core/services/snackbar.service';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -42,6 +43,7 @@ import { AdminReviewsComponent } from './admin-reviews.component';
     MatInputModule,
     MatAutocompleteModule,
     MatCheckboxModule,
+    MatSlideToggleModule,
     AdminReviewsComponent
   ],
   templateUrl: './admin.component.html',
@@ -57,7 +59,7 @@ export class AdminComponent implements OnInit {
   orderParams = new OrderParams();
   totalItems = 0;
   statusOptions = ['All', 'PaymentReceived', 'PaymentMismatch', 'Refunded', 'Pending'];
-  productColumns = ['id', 'name', 'price', 'brand', 'type', 'color', 'quantityInStock', 'actions'];
+  productColumns = ['name', 'price', 'brand', 'type', 'color', 'quantityInStock', 'actions'];
   productDataSource = new MatTableDataSource<Product>([]);
   productPageIndex = 1;
   productPageSize = 10;
@@ -82,6 +84,7 @@ export class AdminComponent implements OnInit {
     lowestPrice: [null as number | null],
     color: [''],
     onSale: [false],
+    isActive: [true],
     type: ['', Validators.required],
     brand: ['', Validators.required],
     variants: this.fb.array([
@@ -167,6 +170,22 @@ export class AdminComponent implements OnInit {
     this.loadProducts();
   }
 
+  toggleActive(product: Product, isActive: boolean) {
+    this.adminService.setProductStatus(product.id, isActive).subscribe({
+      next: updated => {
+        const index = this.productDataSource.data.findIndex(p => p.id === product.id);
+        if (index !== -1) {
+          this.productDataSource.data[index] = {...product, ...updated};
+          this.productDataSource._updateChangeSubscription();
+        }
+        this.snackbar.success(isActive ? 'Product activated' : 'Product deactivated');
+      },
+      error: () => {
+        this.snackbar.error('Unable to update product status');
+      }
+    })
+  }
+
   loadFilters() {
     forkJoin({
       brands: this.adminService.getBrands(),
@@ -199,6 +218,7 @@ export class AdminComponent implements OnInit {
       ...product,
       salePrice: onSale ? product.salePrice : null,
       onSale,
+      isActive: product.isActive ?? true,
       variants: this.variants.value
     });
     this.imagePreview = product.pictureUrl || null;
@@ -220,6 +240,7 @@ export class AdminComponent implements OnInit {
       lowestPrice: null,
       color: '',
       onSale: false,
+      isActive: true,
       type: '',
       brand: '',
       variants: this.variants.value
@@ -245,6 +266,7 @@ export class AdminComponent implements OnInit {
     if (product.color) {
       formData.append('color', product.color);
     }
+    formData.append('isActive', (product.isActive ?? true).toString());
     formData.append('type', product.type ?? '');
     formData.append('brand', product.brand ?? '');
     (this.variants.controls as any[]).forEach((ctrl, index) => {

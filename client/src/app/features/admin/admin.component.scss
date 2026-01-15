@@ -9,3 +9,9 @@
 .card-title {
   @apply text-xl font-semibold;
 }
+
+.compact-toggle {
+  transform: scale(0.9);
+  transform-origin: left center;
+  margin-left: -4px;
+}

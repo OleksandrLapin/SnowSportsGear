@@ -11,6 +11,17 @@
     height: 32px;
 }
 
+.back-button {
+    border-radius: 9999px;
+    color: #1f2937;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.back-button:hover {
+    background-color: rgba(125, 0, 250, 0.08);
+    color: #7d00fa;
+}
+
 a {
     &.active {
         color: #7d00fa;

@@ -39,6 +39,7 @@ public static class ProductMappingExtensions
             SalePrice = product.SalePrice,
             LowestPrice = product.LowestPrice,
             Color = product.Color,
+            IsActive = product.IsActive,
             PictureUrl = imagePath,
             Type = product.Type,
             Brand = product.Brand,

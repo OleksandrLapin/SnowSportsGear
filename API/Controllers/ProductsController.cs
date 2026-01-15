@@ -19,6 +19,10 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
     public async Task<ActionResult<IReadOnlyList<ProductDto>>> GetProducts(
         [FromQuery]ProductSpecParams specParams)
     {
+        // non-admin requests should not include inactive items
+        var isAdmin = User.IsInRole("Admin");
+        specParams.IncludeInactive = specParams.IncludeInactive && isAdmin;
+
         var (data, count) = await productsRepo.GetProductsPagedAsync(specParams);
         var baseUrl = GetBaseUrl();
         var pagination = new Pagination<ProductDto>(specParams.PageIndex, specParams.PageSize, count, data.Select(p => p.ToDto(baseUrl)).ToList());
@@ -97,6 +101,7 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         product.Color = string.IsNullOrWhiteSpace(dto.Color) ? null : dto.Color.Trim();
         product.SalePrice = NormalizeSalePrice(dto.SalePrice, dto.Price);
         product.LowestPrice = NormalizePrice(dto.LowestPrice);
+        product.IsActive = dto.IsActive;
         ApplyVariants(product, dto.Variants);
 
         await SetImageData(product, dto.Image);
@@ -130,6 +135,25 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         return BadRequest("Problem deleting the product");
     }
 
+    [InvalidateCache("api/products|")]
+    [Authorize(Roles = "Admin")]
+    [HttpPatch("{id:int}/active")]
+    public async Task<ActionResult<ProductDto>> SetProductActive(int id, [FromBody] bool isActive)
+    {
+        var product = await productsRepo.GetProductWithVariantsAsync(id);
+        if (product == null) return NotFound();
+
+        product.IsActive = isActive;
+        productsRepo.UpdateProduct(product);
+
+        if (await productsRepo.SaveChangesAsync())
+        {
+            return Ok(product.ToDto(GetBaseUrl()));
+        }
+
+        return BadRequest("Problem updating product status");
+    }
+
     [AllowAnonymous]
     [Cache(10000)]
     [HttpGet("brands")]
@@ -158,6 +182,7 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
             Color = string.IsNullOrWhiteSpace(dto.Color) ? null : dto.Color.Trim(),
             SalePrice = NormalizeSalePrice(dto.SalePrice, dto.Price),
             LowestPrice = NormalizePrice(dto.LowestPrice),
+            IsActive = dto.IsActive,
             Variants = []
         };
 
@@ -178,22 +203,58 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
 
     private static void ApplyVariants(Product product, List<CreateProductVariantDto> variantsDto)
     {
-        product.Variants.Clear();
         var defaultSizes = new[] { "S", "M", "L", "XL" };
 
         var normalizedVariants = variantsDto
             .Where(v => !string.IsNullOrWhiteSpace(v.Size))
+            .Select(v => new
+            {
+                Size = v.Size.Trim().ToUpperInvariant(),
+                Quantity = Math.Max(v.QuantityInStock, 0)
+            })
+            .GroupBy(v => v.Size)
+            .ToDictionary(g => g.Key, g => g.First().Quantity);
+
+        var existingGroups = product.Variants
+            .Where(v => !string.IsNullOrWhiteSpace(v.Size))
             .GroupBy(v => v.Size.Trim().ToUpperInvariant())
-            .Select(g => new { Size = g.Key, Quantity = Math.Max(g.First().QuantityInStock, 0) });
+            .ToList();
+
+        var existing = new Dictionary<string, ProductVariant>();
+        var duplicates = new List<ProductVariant>();
+        foreach (var group in existingGroups)
+        {
+            var primary = group.First();
+            primary.QuantityInStock = group.Sum(v => v.QuantityInStock);
+            existing[group.Key] = primary;
+            duplicates.AddRange(group.Skip(1));
+        }
 
         foreach (var variant in normalizedVariants)
         {
-            product.Variants.Add(new ProductVariant
+            if (existing.TryGetValue(variant.Key, out var current))
             {
-                Size = variant.Size,
-                QuantityInStock = variant.Quantity,
-                ProductId = product.Id
-            });
+                current.QuantityInStock = variant.Value;
+                existing.Remove(variant.Key);
+            }
+            else
+            {
+                product.Variants.Add(new ProductVariant
+                {
+                    Size = variant.Key,
+                    QuantityInStock = variant.Value,
+                    ProductId = product.Id
+                });
+            }
+        }
+
+        foreach (var stale in existing.Values.ToList())
+        {
+            product.Variants.Remove(stale);
+        }
+        foreach (var dup in duplicates)
+        {
+            product.Variants.Remove(dup);
         }
 
         var existingSizes = product.Variants.Select(v => v.Size.ToUpperInvariant()).ToHashSet();

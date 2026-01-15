@@ -35,7 +35,8 @@ export class AdminService {
   getProducts(pageIndex: number, pageSize: number) {
     const params = new HttpParams()
       .append('pageIndex', pageIndex)
-      .append('pageSize', pageSize);
+      .append('pageSize', pageSize)
+      .append('includeInactive', true);
     return this.http.get<Pagination<Product>>(this.baseUrl + 'products', {params});
   }
 
@@ -49,6 +50,10 @@ export class AdminService {
 
   deleteProduct(id: number) {
     return this.http.delete(this.baseUrl + 'products/' + id);
+  }
+
+  setProductStatus(id: number, isActive: boolean) {
+    return this.http.patch<Product>(this.baseUrl + 'products/' + id + '/active', isActive);
   }
 
   getBrands() {

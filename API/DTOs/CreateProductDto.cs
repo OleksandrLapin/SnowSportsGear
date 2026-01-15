@@ -26,6 +26,8 @@ public class CreateProductDto
 
     public string? Color { get; set; }
 
+    public bool IsActive { get; set; } = true;
+
     public IFormFile? Image { get; set; }
 
     [MinLength(1, ErrorMessage = "At least one variant is required")]

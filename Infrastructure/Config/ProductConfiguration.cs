@@ -19,6 +19,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.PictureData).HasColumnType("varbinary(max)");
         builder.Property(x => x.RatingAverage).HasColumnType("float").HasDefaultValue(0);
         builder.Property(x => x.RatingCount).HasDefaultValue(0);
+        builder.Property(x => x.IsActive).HasDefaultValue(true);
 
         builder.HasIndex(x => x.Name);
         builder.HasIndex(x => x.Brand);

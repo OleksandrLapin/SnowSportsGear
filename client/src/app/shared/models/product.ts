@@ -13,6 +13,7 @@ export type Product = {
     salePrice?: number | null;
     lowestPrice?: number | null;
     color?: string | null;
+    isActive?: boolean;
 }
 
 export type ProductVariant = {

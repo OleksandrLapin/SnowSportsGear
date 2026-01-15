@@ -3,6 +3,7 @@
 public class ProductSpecParams : PagingParams
 {
     private List<string> _brands = [];
+    public bool IncludeInactive { get; set; } = false;
     public List<string> Brands
     {
         get => _brands;
@@ -32,6 +33,8 @@ public class ProductSpecParams : PagingParams
         get => _search ?? "";
         set => _search = value?.Trim();
     }
+    
+    public string? SearchLower => string.IsNullOrEmpty(_search) ? null : _search.ToLowerInvariant();
     
 
 }

@@ -19,4 +19,5 @@ public class Product : BaseEntity, IDtoConvertible
     public decimal? SalePrice { get; set; }
     public decimal? LowestPrice { get; set; }
     public string? Color { get; set; }
+    public bool IsActive { get; set; } = true;
 }
