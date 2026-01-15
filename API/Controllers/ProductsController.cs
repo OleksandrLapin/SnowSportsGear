@@ -1,7 +1,8 @@
-using API.DTOs;
+﻿using API.DTOs;
 using API.Extensions;
 using API.RequestHelpers;
 using Core.Entities;
+using Core.Helpers;
 using Core.Interfaces;
 using Core.Specifications;
 using Microsoft.AspNetCore.Authorization;
@@ -72,7 +73,13 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
     [HttpPost]
     public async Task<ActionResult<ProductDto>> CreateProduct([FromForm] CreateProductDto dto)
     {
-        var product = await MapDtoToProduct(dto);
+        var salePrice = NormalizeSalePrice(dto.SalePrice, dto.Price);
+        if (!TryNormalizeLowestPrice(dto.LowestPrice, dto.Price, salePrice, out var lowestPrice, out var currentLowest))
+        {
+            return BadRequest($"Lowest price must be less than or equal to {currentLowest:0.##}");
+        }
+
+        var product = await MapDtoToProduct(dto, salePrice, lowestPrice);
 
         productsRepo.AddProduct(product);
 
@@ -93,14 +100,20 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
 
         if (product == null) return BadRequest("Cannot update this product");
 
+        var salePrice = NormalizeSalePrice(dto.SalePrice, dto.Price);
+        if (!TryNormalizeLowestPrice(dto.LowestPrice, dto.Price, salePrice, out var lowestPrice, out var currentLowest))
+        {
+            return BadRequest($"Lowest price must be less than or equal to {currentLowest:0.##}");
+        }
+
         product.Name = dto.Name;
         product.Description = dto.Description;
         product.Price = dto.Price;
         product.Brand = dto.Brand;
         product.Type = dto.Type;
         product.Color = string.IsNullOrWhiteSpace(dto.Color) ? null : dto.Color.Trim();
-        product.SalePrice = NormalizeSalePrice(dto.SalePrice, dto.Price);
-        product.LowestPrice = NormalizePrice(dto.LowestPrice);
+        product.SalePrice = salePrice;
+        product.LowestPrice = lowestPrice;
         product.IsActive = dto.IsActive;
         ApplyVariants(product, dto.Variants);
 
@@ -170,7 +183,7 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         return Ok(await productsRepo.GetTypesAsync());
     }
 
-    private static async Task<Product> MapDtoToProduct(CreateProductDto dto)
+    private static async Task<Product> MapDtoToProduct(CreateProductDto dto, decimal? salePrice, decimal lowestPrice)
     {
         var product = new Product
         {
@@ -180,8 +193,8 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
             Brand = dto.Brand,
             Type = dto.Type,
             Color = string.IsNullOrWhiteSpace(dto.Color) ? null : dto.Color.Trim(),
-            SalePrice = NormalizeSalePrice(dto.SalePrice, dto.Price),
-            LowestPrice = NormalizePrice(dto.LowestPrice),
+            SalePrice = salePrice,
+            LowestPrice = lowestPrice,
             IsActive = dto.IsActive,
             Variants = []
         };
@@ -203,29 +216,46 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
 
     private static void ApplyVariants(Product product, List<CreateProductVariantDto> variantsDto)
     {
-        var defaultSizes = new[] { "S", "M", "L", "XL" };
+        var defaultSizes = ProductSizeDefaults.GetSizesForType(product.Type);
+        var allowedSizes = new HashSet<string>(defaultSizes, StringComparer.OrdinalIgnoreCase);
+        var canonicalSizes = defaultSizes.ToDictionary(size => size, StringComparer.OrdinalIgnoreCase);
 
         var normalizedVariants = variantsDto
             .Where(v => !string.IsNullOrWhiteSpace(v.Size))
             .Select(v => new
             {
-                Size = v.Size.Trim().ToUpperInvariant(),
+                Size = v.Size.Trim(),
                 Quantity = Math.Max(v.QuantityInStock, 0)
             })
-            .GroupBy(v => v.Size)
-            .ToDictionary(g => g.Key, g => g.First().Quantity);
+            .Where(v => !ProductSizeDefaults.IsDisallowedSize(v.Size))
+            .Where(v => allowedSizes.Contains(v.Size))
+            .GroupBy(v => v.Size, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Quantity, StringComparer.OrdinalIgnoreCase);
+
+        var invalidVariants = product.Variants
+            .Where(v => ProductSizeDefaults.IsDisallowedSize(v.Size) || !allowedSizes.Contains(v.Size))
+            .ToList();
+
+        foreach (var invalid in invalidVariants)
+        {
+            product.Variants.Remove(invalid);
+        }
 
         var existingGroups = product.Variants
             .Where(v => !string.IsNullOrWhiteSpace(v.Size))
-            .GroupBy(v => v.Size.Trim().ToUpperInvariant())
+            .GroupBy(v => v.Size.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var existing = new Dictionary<string, ProductVariant>();
+        var existing = new Dictionary<string, ProductVariant>(StringComparer.OrdinalIgnoreCase);
         var duplicates = new List<ProductVariant>();
         foreach (var group in existingGroups)
         {
             var primary = group.First();
             primary.QuantityInStock = group.Sum(v => v.QuantityInStock);
+            if (canonicalSizes.TryGetValue(group.Key, out var canonical))
+            {
+                primary.Size = canonical;
+            }
             existing[group.Key] = primary;
             duplicates.AddRange(group.Skip(1));
         }
@@ -239,9 +269,10 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
             }
             else
             {
+                var size = canonicalSizes.TryGetValue(variant.Key, out var canonical) ? canonical : variant.Key;
                 product.Variants.Add(new ProductVariant
                 {
-                    Size = variant.Key,
+                    Size = size,
                     QuantityInStock = variant.Value,
                     ProductId = product.Id
                 });
@@ -257,23 +288,20 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
             product.Variants.Remove(dup);
         }
 
-        var existingSizes = product.Variants.Select(v => v.Size.ToUpperInvariant()).ToHashSet();
+        var existingSizes = product.Variants.Select(v => v.Size).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var size in defaultSizes)
         {
-            var key = size.ToUpperInvariant();
-            if (!existingSizes.Contains(key))
+            if (!existingSizes.Contains(size))
             {
-                // добавляем отсутствующие размеры с нулевым остатком, чтобы они были видны на фронте
                 product.Variants.Add(new ProductVariant
                 {
-                    Size = key,
+                    Size = size,
                     QuantityInStock = 0,
                     ProductId = product.Id
                 });
             }
         }
     }
-
     private static decimal? NormalizeSalePrice(decimal? salePrice, decimal basePrice)
     {
         if (!salePrice.HasValue) return null;
@@ -282,10 +310,27 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         return Math.Round(salePrice.Value, 2);
     }
 
-    private static decimal? NormalizePrice(decimal? price)
+    private static decimal GetCurrentLowestPrice(decimal price, decimal? salePrice)
     {
-        if (!price.HasValue || price.Value <= 0) return null;
-        return Math.Round(price.Value, 2);
+        if (salePrice.HasValue && salePrice.Value > 0 && salePrice.Value < price)
+        {
+            return salePrice.Value;
+        }
+
+        return price;
+    }
+
+    private static bool TryNormalizeLowestPrice(decimal? lowestPrice, decimal price, decimal? salePrice, out decimal normalized, out decimal currentLowest)
+    {
+        currentLowest = GetCurrentLowestPrice(price, salePrice);
+        if (!lowestPrice.HasValue || lowestPrice.Value <= 0)
+        {
+            normalized = Math.Round(currentLowest, 2);
+            return true;
+        }
+
+        normalized = Math.Round(lowestPrice.Value, 2);
+        return normalized <= currentLowest;
     }
 
     private string GetBaseUrl()
@@ -296,3 +341,7 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         return $"{scheme}://{host}/";
     }
 }
+
+
+
+

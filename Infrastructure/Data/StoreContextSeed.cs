@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System.Text.Json;
 using Core.Entities;
+using Core.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -50,7 +51,7 @@ public class StoreContextSeed
             {
                 var product = seedProduct.ToProduct();
                 PopulateImage(product, path);
-                product.Variants = BuildDefaultVariants();
+                product.Variants = BuildDefaultVariants(product.Type);
                 context.Products.Add(product);
             }
             await context.SaveChangesAsync();
@@ -73,7 +74,7 @@ public class StoreContextSeed
                         PopulateImage(product, path);
                         if ((product.Variants == null || !product.Variants.Any()))
                         {
-                            product.Variants = BuildDefaultVariants();
+                            product.Variants = BuildDefaultVariants(product.Type);
                         }
                     }
                 }
@@ -85,7 +86,23 @@ public class StoreContextSeed
             }
         }
 
-        var productsInDb = await context.Products.ToListAsync();
+        var productsInDb = await context.Products
+            .Include(p => p.Variants)
+            .ToListAsync();
+
+        var variantsUpdated = false;
+        foreach (var product in productsInDb)
+        {
+            if (EnsureProductVariants(product))
+            {
+                variantsUpdated = true;
+            }
+        }
+
+        if (variantsUpdated)
+        {
+            await context.SaveChangesAsync();
+        }
 
         if (!await context.ProductReviews.AnyAsync())
         {
@@ -215,15 +232,130 @@ public class StoreContextSeed
         };
     }
 
-    private static List<ProductVariant> BuildDefaultVariants()
+    private static List<ProductVariant> BuildDefaultVariants(string? type)
     {
-        return new List<ProductVariant>
+        var sizes = ProductSizeDefaults.GetSizesForType(type);
+        return BuildDefaultVariants(sizes);
+    }
+
+    private static List<ProductVariant> BuildDefaultVariants(IReadOnlyList<string> sizes)
+    {
+        var variants = new List<ProductVariant>(sizes.Count);
+        for (var i = 0; i < sizes.Count; i++)
         {
-            new() { Size = "S", QuantityInStock = 5 },
-            new() { Size = "M", QuantityInStock = 7 },
-            new() { Size = "L", QuantityInStock = 10 },
-            new() { Size = "XL", QuantityInStock = 12 },
+            variants.Add(new ProductVariant
+            {
+                Size = sizes[i],
+                QuantityInStock = GetDefaultQuantityForSize(sizes[i], i)
+            });
+        }
+
+        return variants;
+    }
+
+    private static int GetDefaultQuantityForSize(string size, int index)
+    {
+        return size.ToUpperInvariant() switch
+        {
+            "S" => 5,
+            "M" => 7,
+            "L" => 10,
+            "XL" => 12,
+            _ => 5 + (index * 2)
         };
+    }
+
+    private static bool EnsureProductVariants(Product product)
+    {
+        var defaultSizes = ProductSizeDefaults.GetSizesForType(product.Type);
+        var allowedSizes = new HashSet<string>(defaultSizes, StringComparer.OrdinalIgnoreCase);
+
+        var existingVariants = product.Variants?.ToList() ?? [];
+        var existingTotal = existingVariants
+            .Where(v => !ProductSizeDefaults.IsDisallowedSize(v.Size))
+            .Sum(v => v.QuantityInStock);
+
+        var sizeQuantities = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var hasInvalid = false;
+
+        foreach (var variant in existingVariants)
+        {
+            if (ProductSizeDefaults.IsDisallowedSize(variant.Size))
+            {
+                hasInvalid = true;
+                continue;
+            }
+
+            var normalized = variant.Size.Trim();
+            if (!allowedSizes.Contains(normalized))
+            {
+                hasInvalid = true;
+                continue;
+            }
+
+            if (sizeQuantities.TryGetValue(normalized, out var current))
+            {
+                sizeQuantities[normalized] = current + variant.QuantityInStock;
+            }
+            else
+            {
+                sizeQuantities[normalized] = variant.QuantityInStock;
+            }
+        }
+
+        var desiredVariants = defaultSizes
+            .Select(size => new ProductVariant
+            {
+                Size = size,
+                QuantityInStock = sizeQuantities.TryGetValue(size, out var quantity) ? quantity : 0,
+                ProductId = product.Id
+            })
+            .ToList();
+
+        if (sizeQuantities.Count == 0 && existingTotal > 0)
+        {
+            DistributeQuantity(desiredVariants, existingTotal);
+        }
+
+        var needsUpdate = hasInvalid || existingVariants.Count != desiredVariants.Count;
+        if (!needsUpdate)
+        {
+            foreach (var desired in desiredVariants)
+            {
+                var match = existingVariants.FirstOrDefault(v => string.Equals(v.Size.Trim(), desired.Size, StringComparison.OrdinalIgnoreCase));
+                if (match == null || match.QuantityInStock != desired.QuantityInStock)
+                {
+                    needsUpdate = true;
+                    break;
+                }
+            }
+        }
+
+        if (!needsUpdate)
+        {
+            return false;
+        }
+
+        product.Variants.Clear();
+        foreach (var variant in desiredVariants)
+        {
+            product.Variants.Add(variant);
+        }
+
+        return true;
+    }
+
+    private static void DistributeQuantity(List<ProductVariant> variants, int totalQuantity)
+    {
+        if (variants.Count == 0) return;
+
+        var perSize = totalQuantity / variants.Count;
+        var remainder = totalQuantity % variants.Count;
+
+        for (var i = 0; i < variants.Count; i++)
+        {
+            variants[i].QuantityInStock = perSize + (i < remainder ? 1 : 0);
+        }
     }
 
     private static async Task ApplyPricingMetaAsync(StoreContext context, List<Product> productsInDb)
@@ -232,18 +364,6 @@ public class StoreContextSeed
 
         var random = new Random(123);
         var needsSave = false;
-
-        // ensure lowest national price for all products
-        foreach (var product in productsInDb)
-        {
-            if (!product.LowestPrice.HasValue || product.LowestPrice <= 0)
-            {
-                // set between 85% and 95% of current price
-                var factor = 0.85m + (decimal)(random.NextDouble() * 0.1);
-                product.LowestPrice = Math.Round(product.Price * factor, 2);
-                needsSave = true;
-            }
-        }
 
         // apply promo price to ~10% of products (only if not already on sale)
         var saleTargetCount = Math.Max(1, (int)Math.Ceiling(productsInDb.Count * 0.1));
@@ -266,10 +386,30 @@ public class StoreContextSeed
             needsSave = true;
         }
 
+        foreach (var product in productsInDb)
+        {
+            var currentLowest = GetCurrentLowestPrice(product.Price, product.SalePrice);
+            if (!product.LowestPrice.HasValue || product.LowestPrice <= 0 || product.LowestPrice > currentLowest)
+            {
+                product.LowestPrice = Math.Round(currentLowest, 2);
+                needsSave = true;
+            }
+        }
+
         if (needsSave)
         {
             await context.SaveChangesAsync();
         }
+    }
+
+    private static decimal GetCurrentLowestPrice(decimal price, decimal? salePrice)
+    {
+        if (salePrice.HasValue && salePrice.Value > 0 && salePrice.Value < price)
+        {
+            return salePrice.Value;
+        }
+
+        return price;
     }
 
     private static async Task<List<AppUser>> EnsureSampleUsers(UserManager<AppUser> userManager)
@@ -397,3 +537,8 @@ public class StoreContextSeed
         }
     }
 }
+
+
+
+
+

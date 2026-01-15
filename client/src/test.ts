@@ -5,6 +5,7 @@ import {
   platformBrowserDynamicTesting
 } from '@angular/platform-browser-dynamic/testing';
 import './app/core/services/navigation.service.spec';
+import './app/shared/utils/product-sizes.spec';
 
 getTestBed().initTestEnvironment(
   BrowserDynamicTestingModule,

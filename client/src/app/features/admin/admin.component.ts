@@ -22,6 +22,7 @@ import { forkJoin } from 'rxjs';
 import { SnackbarService } from '../../core/services/snackbar.service';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { AdminReviewsComponent } from './admin-reviews.component';
+import { getDefaultSizesForType } from '../../shared/utils/product-sizes';
 
 @Component({
   selector: 'app-admin',
@@ -109,6 +110,29 @@ export class AdminComponent implements OnInit {
       size: [size, Validators.required],
       quantityInStock: [quantity, [Validators.required, Validators.min(0)]]
     });
+  }
+
+  private buildDefaultVariants(type: string | null, useStockDefaults = false) {
+    const sizes = getDefaultSizesForType(type);
+    return sizes.map((size, index) => ({
+      size,
+      quantityInStock: useStockDefaults ? this.defaultQuantityForSize(size, index) : 0
+    }));
+  }
+
+  private defaultQuantityForSize(size: string, index: number) {
+    switch (size.toUpperCase()) {
+      case 'S':
+        return 5;
+      case 'M':
+        return 7;
+      case 'L':
+        return 10;
+      case 'XL':
+        return 12;
+      default:
+        return 5 + index * 2;
+    }
   }
 
   loadOrders() {
@@ -206,12 +230,7 @@ export class AdminComponent implements OnInit {
     }
     const variantSource = (product.variants && product.variants.length > 0)
       ? product.variants
-      : [
-        {size: 'S', quantityInStock: 5},
-        {size: 'M', quantityInStock: 7},
-        {size: 'L', quantityInStock: 10},
-        {size: 'XL', quantityInStock: 12}
-      ];
+      : this.buildDefaultVariants(product.type, true);
     variantSource.forEach(v => this.variants.push(this.createVariantGroup(v.size, v.quantityInStock)));
     const onSale = !!(product.salePrice && product.salePrice > 0 && product.salePrice < product.price);
     this.productForm.patchValue({
@@ -230,7 +249,8 @@ export class AdminComponent implements OnInit {
     while (this.variants.length > 0) {
       this.variants.removeAt(0);
     }
-    ['S','M','L','XL'].forEach(s => this.variants.push(this.createVariantGroup(s, 0)));
+    this.buildDefaultVariants(null)
+      .forEach(v => this.variants.push(this.createVariantGroup(v.size, v.quantityInStock)));
     this.productForm.reset({
       id: 0,
       name: '',
@@ -253,6 +273,13 @@ export class AdminComponent implements OnInit {
   submitProduct() {
     if (this.productForm.invalid) return;
     const product = this.productForm.value as Product & { onSale: boolean };
+    const currentLowest = (product.onSale && product.salePrice && product.salePrice > 0 && product.salePrice < product.price)
+      ? product.salePrice
+      : product.price;
+    if (product.lowestPrice && product.lowestPrice > currentLowest) {
+      this.snackbar.error('Lowest price must be less than or equal to the current price');
+      return;
+    }
     const formData = new FormData();
     formData.append('name', product.name ?? '');
     formData.append('description', product.description ?? '');

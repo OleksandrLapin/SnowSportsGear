@@ -1,5 +1,6 @@
 using API.DTOs;
 using Core.Entities;
+using Core.Helpers;
 
 namespace API.Extensions;
 
@@ -9,7 +10,7 @@ public static class ProductMappingExtensions
     {
         var hasStoredImage = !string.IsNullOrEmpty(product.PictureContentType) ||
             (product.PictureData != null && product.PictureData.Length > 0);
-        var variants = EnsureDefaultVariants(product.Variants);
+        var variants = EnsureDefaultVariants(product.Variants, product.Type);
         var totalQuantity = variants.Sum(v => v.QuantityInStock);
         var imagePath = hasStoredImage
             ? "api/products/{id}/image"
@@ -50,20 +51,22 @@ public static class ProductMappingExtensions
         };
     }
 
-    private static List<ProductVariantDto> EnsureDefaultVariants(ICollection<ProductVariant>? variants)
+    private static List<ProductVariantDto> EnsureDefaultVariants(ICollection<ProductVariant>? variants, string? type)
     {
-        var defaultSizes = new[] { "S", "M", "L", "XL" };
+        var defaultSizes = ProductSizeDefaults.GetSizesForType(type);
+        var defaultOrder = defaultSizes.ToArray();
+        var allowedSizes = new HashSet<string>(defaultSizes, StringComparer.OrdinalIgnoreCase);
         var dict = (variants ?? Array.Empty<ProductVariant>())
-            .GroupBy(v => v.Size.ToUpperInvariant())
-            .ToDictionary(g => g.Key, g => g.First().QuantityInStock);
+            .Where(v => !ProductSizeDefaults.IsDisallowedSize(v.Size))
+            .Where(v => allowedSizes.Contains(v.Size.Trim()))
+            .GroupBy(v => v.Size.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().QuantityInStock, StringComparer.OrdinalIgnoreCase);
 
         foreach (var size in defaultSizes)
         {
-            var key = size.ToUpperInvariant();
-            if (!dict.ContainsKey(key))
+            if (!dict.ContainsKey(size))
             {
-                // добавляем отсутствующие размеры с нулевым остатком, чтобы фронт показал "нет в наличии"
-                dict[key] = 0;
+                dict[size] = 0;
             }
         }
 
@@ -72,8 +75,8 @@ public static class ProductMappingExtensions
             Size = kvp.Key,
             QuantityInStock = kvp.Value
         })
-        .OrderBy(v => Array.IndexOf(defaultSizes, v.Size.ToUpperInvariant()))
-        .ThenBy(v => v.Size)
+        .OrderBy(v => Array.IndexOf(defaultOrder, v.Size))
+        .ThenBy(v => v.Size, StringComparer.OrdinalIgnoreCase)
         .ToList();
     }
 }
