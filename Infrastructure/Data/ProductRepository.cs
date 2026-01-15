@@ -61,6 +61,11 @@ public class ProductRepository(StoreContext context) : IProductRepository
     {
         var query = context.Products.AsNoTracking().AsQueryable();
 
+        if (!specParams.IncludeInactive)
+        {
+            query = query.Where(p => p.IsActive);
+        }
+
         if (specParams.Brands.Any())
         {
             query = query.Where(p => specParams.Brands.Contains(p.Brand));

@@ -276,9 +276,11 @@ export class AdminComponent implements OnInit {
     const currentLowest = (product.onSale && product.salePrice && product.salePrice > 0 && product.salePrice < product.price)
       ? product.salePrice
       : product.price;
-    if (product.lowestPrice && product.lowestPrice > currentLowest) {
-      this.snackbar.error('Lowest price must be less than or equal to the current price');
-      return;
+    let lowestPrice = product.lowestPrice ?? null;
+    if (lowestPrice && lowestPrice > currentLowest) {
+      lowestPrice = currentLowest;
+      this.productForm.patchValue({lowestPrice});
+      this.snackbar.success('Lowest price adjusted to the current price');
     }
     const formData = new FormData();
     formData.append('name', product.name ?? '');
@@ -287,8 +289,8 @@ export class AdminComponent implements OnInit {
     if (product.onSale && product.salePrice && product.salePrice > 0) {
       formData.append('salePrice', product.salePrice.toString());
     }
-    if (product.lowestPrice && product.lowestPrice > 0) {
-      formData.append('lowestPrice', product.lowestPrice.toString());
+    if (lowestPrice && lowestPrice > 0) {
+      formData.append('lowestPrice', lowestPrice.toString());
     }
     if (product.color) {
       formData.append('color', product.color);

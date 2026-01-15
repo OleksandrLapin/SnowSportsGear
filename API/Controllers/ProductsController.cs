@@ -330,7 +330,12 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         }
 
         normalized = Math.Round(lowestPrice.Value, 2);
-        return normalized <= currentLowest;
+        if (normalized > currentLowest)
+        {
+            normalized = Math.Round(currentLowest, 2);
+        }
+
+        return true;
     }
 
     private string GetBaseUrl()
