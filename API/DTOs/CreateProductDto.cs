@@ -30,6 +30,8 @@ public class CreateProductDto
 
     public IFormFile? Image { get; set; }
 
+    public string? SizeGuide { get; set; }
+
     [MinLength(1, ErrorMessage = "At least one variant is required")]
     public List<CreateProductVariantDto> Variants { get; set; } = [];
 }

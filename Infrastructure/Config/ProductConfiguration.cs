@@ -20,6 +20,7 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(x => x.RatingAverage).HasColumnType("float").HasDefaultValue(0);
         builder.Property(x => x.RatingCount).HasDefaultValue(0);
         builder.Property(x => x.IsActive).HasDefaultValue(true);
+        builder.Property(x => x.SizeGuide).HasColumnType("nvarchar(max)");
 
         builder.HasIndex(x => x.Name);
         builder.HasIndex(x => x.Brand);

@@ -1,3 +1,5 @@
+using Core.Models;
+
 namespace API.DTOs;
 
 public class ProductDto
@@ -17,4 +19,5 @@ public class ProductDto
     public decimal? LowestPrice { get; set; }
     public string? Color { get; set; }
     public bool IsActive { get; set; }
+    public ProductSizeGuide? SizeGuide { get; set; }
 }

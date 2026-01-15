@@ -1,7 +1,7 @@
 [
   {
     "Name": "Angular Speedster Board 2000",
-    "Description": "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Maecenas porttitor congue massa. Fusce posuere, magna sed pulvinar ultricies, purus lectus malesuada libero, sit amet commodo magna eros quis urna.",
+    "Description": "Fast, stable all-mountain board with a directional twin shape and medium flex. Built for carving and pop without feeling too stiff.",
     "Price": 200,
     "PictureUrl": "/images/products/sb-ang1.png",
     "Type": "Boards",
@@ -10,7 +10,7 @@
   },
   {
     "Name": "Green Angular Board 3000",
-    "Description": "Nunc viverra imperdiet enim. Fusce est. Vivamus a tellus.",
+    "Description": "Playful freestyle board with a soft-to-medium flex that is easy to press and spin. Great for park progression and mellow groomers.",
     "Price": 150,
     "PictureUrl": "/images/products/sb-ang2.png",
     "Type": "Boards",
@@ -19,7 +19,7 @@
   },
   {
     "Name": "Core Board Speed Rush 3",
-    "Description": "Suspendisse dui purus, scelerisque at, vulputate vitae, pretium mattis, nunc. Mauris eget neque at sem venenatis eleifend. Ut nonummy.",
+    "Description": "Responsive freeride board with a set-back stance and extra edge hold. Designed for stability at speed and chopped snow.",
     "Price": 180,
     "PictureUrl": "/images/products/sb-core1.png",
     "Type": "Boards",
@@ -28,7 +28,7 @@
   },
   {
     "Name": "Net Core Super Board",
-    "Description": "Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Proin pharetra nonummy pede. Mauris et orci.",
+    "Description": "Premium all-mountain deck with a damp core and carbon stringers. Smooth in variable snow and strong on big turns.",
     "Price": 300,
     "PictureUrl": "/images/products/sb-core2.png",
     "Type": "Boards",
@@ -37,7 +37,7 @@
   },
   {
     "Name": "React Board Super Whizzy Fast",
-    "Description": "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Maecenas porttitor congue massa. Fusce posuere, magna sed pulvinar ultricies, purus lectus malesuada libero, sit amet commodo magna eros quis urna.",
+    "Description": "Lively camber board with quick turn initiation and solid edge grip. Balanced for resort riding, jumps, and side hits.",
     "Price": 250,
     "PictureUrl": "/images/products/sb-react1.png",
     "Type": "Boards",
@@ -46,7 +46,7 @@
   },
   {
     "Name": "Typescript Entry Board",
-    "Description": "Aenean nec lorem. In porttitor. Donec laoreet nonummy augue.",
+    "Description": "Beginner-friendly board with an easy flex and catch-free rocker zones. Perfect for learning turns and building confidence.",
     "Price": 120,
     "PictureUrl": "/images/products/sb-ts1.png",
     "Type": "Boards",
@@ -55,7 +55,7 @@
   },
   {
     "Name": "Core Blue Hat",
-    "Description": "Fusce posuere, magna sed pulvinar ultricies, purus lectus malesuada libero, sit amet commodo magna eros quis urna.",
+    "Description": "Warm acrylic knit beanie with a soft fleece band for comfort. Stretches to fit snug without itching.",
     "Price": 10,
     "PictureUrl": "/images/products/hat-core1.png",
     "Type": "Hats",
@@ -64,7 +64,7 @@
   },
   {
     "Name": "Green React Woolen Hat",
-    "Description": "Suspendisse dui purus, scelerisque at, vulputate vitae, pretium mattis, nunc. Mauris eget neque at sem venenatis eleifend. Ut nonummy.",
+    "Description": "Wool blend beanie that traps heat and stays breathable. Rib-knit texture keeps its shape after long days.",
     "Price": 8,
     "PictureUrl": "/images/products/hat-react1.png",
     "Type": "Hats",
@@ -73,7 +73,7 @@
   },
   {
     "Name": "Purple React Woolen Hat",
-    "Description": "Fusce posuere, magna sed pulvinar ultricies, purus lectus malesuada libero, sit amet commodo magna eros quis urna.",
+    "Description": "Cozy, lightweight beanie with a stretch fit and low-profile cuff. Ideal under a helmet or on its own.",
     "Price": 15,
     "PictureUrl": "/images/products/hat-react2.png",
     "Type": "Hats",
@@ -82,7 +82,7 @@
   },
   {
     "Name": "Blue Code Gloves",
-    "Description": "Nunc viverra imperdiet enim. Fusce est. Vivamus a tellus.",
+    "Description": "Water-resistant snowboard gloves with a soft lining and grippy palm. Flexible enough for buckles and zipper pulls.",
     "Price": 18,
     "PictureUrl": "/images/products/glove-code1.png",
     "Type": "Gloves",
@@ -91,7 +91,7 @@
   },
   {
     "Name": "Green Code Gloves",
-    "Description": "Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Proin pharetra nonummy pede. Mauris et orci.",
+    "Description": "Insulated gloves built for cold lift rides. Durable shell with reinforced fingertips for extra wear.",
     "Price": 15,
     "PictureUrl": "/images/products/glove-code2.png",
     "Type": "Gloves",
@@ -100,7 +100,7 @@
   },
   {
     "Name": "Purple React Gloves",
-    "Description": "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Maecenas porttitor congue massa.",
+    "Description": "All-mountain gloves with a warm microfleece lining and adjustable wrist strap. Great balance of warmth and dexterity.",
     "Price": 16,
     "PictureUrl": "/images/products/glove-react1.png",
     "Type": "Gloves",
@@ -109,7 +109,7 @@
   },
   {
     "Name": "Green React Gloves",
-    "Description": "Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Proin pharetra nonummy pede. Mauris et orci.",
+    "Description": "Breathable gloves for mild to cold days with a snug cuff and touchscreen-ready index finger.",
     "Price": 14,
     "PictureUrl": "/images/products/glove-react2.png",
     "Type": "Gloves",
@@ -118,7 +118,7 @@
   },
   {
     "Name": "Redis Red Boots",
-    "Description": "Suspendisse dui purus, scelerisque at, vulputate vitae, pretium mattis, nunc. Mauris eget neque at sem venenatis eleifend. Ut nonummy.",
+    "Description": "All-mountain boots with a supportive flex and heat-moldable liner. Secure heel hold and cushioned outsole for long days.",
     "Price": 250,
     "PictureUrl": "/images/products/boot-redis1.png",
     "Type": "Boots",
@@ -127,7 +127,7 @@
   },
   {
     "Name": "Core Red Boots",
-    "Description": "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Maecenas porttitor congue massa. Fusce posuere, magna sed pulvinar ultricies, purus lectus malesuada libero, sit amet commodo magna eros quis urna.",
+    "Description": "Stiff-leaning boots for precise response and edge control. Dual-zone lacing and shock-absorbing footbed.",
     "Price": 189.99,
     "PictureUrl": "/images/products/boot-core2.png",
     "Type": "Boots",
@@ -136,7 +136,7 @@
   },
   {
     "Name": "Core Purple Boots",
-    "Description": "Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Proin pharetra nonummy pede. Mauris et orci.",
+    "Description": "Medium flex boots with a comfortable fit right out of the box. Lightweight outsole and quick-lace system.",
     "Price": 199.99,
     "PictureUrl": "/images/products/boot-core1.png",
     "Type": "Boots",
@@ -145,7 +145,7 @@
   },
   {
     "Name": "Angular Purple Boots",
-    "Description": "Aenean nec lorem. In porttitor. Donec laoreet nonummy augue.",
+    "Description": "Comfort-focused boots with a smooth flex and warm liner. Great for riders who want easy control and forgiveness.",
     "Price": 150,
     "PictureUrl": "/images/products/boot-ang2.png",
     "Type": "Boots",
@@ -154,7 +154,7 @@
   },
   {
     "Name": "Angular Blue Boots",
-    "Description": "Suspendisse dui purus, scelerisque at, vulputate vitae, pretium mattis, nunc. Mauris eget neque at sem venenatis eleifend. Ut nonummy.",
+    "Description": "Versatile boots with balanced flex and reliable support. Padded tongue and EVA sole for comfort and impact protection.",
     "Price": 180,
     "PictureUrl": "/images/products/boot-ang1.png",
     "Type": "Boots",

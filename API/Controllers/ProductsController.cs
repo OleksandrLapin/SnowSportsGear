@@ -78,8 +78,12 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         {
             return BadRequest($"Lowest price must be less than or equal to {currentLowest:0.##}");
         }
+        if (!TryNormalizeSizeGuide(dto.SizeGuide, dto.Type, out var sizeGuide, out var sizeGuideError))
+        {
+            return BadRequest(sizeGuideError);
+        }
 
-        var product = await MapDtoToProduct(dto, salePrice, lowestPrice);
+        var product = await MapDtoToProduct(dto, salePrice, lowestPrice, sizeGuide);
 
         productsRepo.AddProduct(product);
 
@@ -105,6 +109,10 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         {
             return BadRequest($"Lowest price must be less than or equal to {currentLowest:0.##}");
         }
+        if (!TryNormalizeSizeGuide(dto.SizeGuide, dto.Type, out var sizeGuide, out var sizeGuideError))
+        {
+            return BadRequest(sizeGuideError);
+        }
 
         product.Name = dto.Name;
         product.Description = dto.Description;
@@ -115,6 +123,7 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         product.SalePrice = salePrice;
         product.LowestPrice = lowestPrice;
         product.IsActive = dto.IsActive;
+        product.SizeGuide = sizeGuide;
         ApplyVariants(product, dto.Variants);
 
         await SetImageData(product, dto.Image);
@@ -183,7 +192,7 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         return Ok(await productsRepo.GetTypesAsync());
     }
 
-    private static async Task<Product> MapDtoToProduct(CreateProductDto dto, decimal? salePrice, decimal lowestPrice)
+    private static async Task<Product> MapDtoToProduct(CreateProductDto dto, decimal? salePrice, decimal lowestPrice, string? sizeGuide)
     {
         var product = new Product
         {
@@ -196,6 +205,7 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
             SalePrice = salePrice,
             LowestPrice = lowestPrice,
             IsActive = dto.IsActive,
+            SizeGuide = sizeGuide,
             Variants = []
         };
 
@@ -335,6 +345,28 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
             normalized = Math.Round(currentLowest, 2);
         }
 
+        return true;
+    }
+
+    private static bool TryNormalizeSizeGuide(string? sizeGuideJson, string? productType, out string? normalized, out string? error)
+    {
+        normalized = null;
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(sizeGuideJson)) return true;
+
+        if (!ProductSizeGuideDefaults.TryDeserialize(sizeGuideJson, out var guide) || guide == null)
+        {
+            error = "Size guide must be valid JSON.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(guide.Type))
+        {
+            guide.Type = ProductSizeGuideDefaults.NormalizeGuideType(productType) ?? string.Empty;
+        }
+
+        normalized = ProductSizeGuideDefaults.Serialize(guide);
         return true;
     }
 

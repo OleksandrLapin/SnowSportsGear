@@ -13,7 +13,7 @@ import {MatTabsModule} from '@angular/material/tabs';
 import { RouterLink } from '@angular/router';
 import { DialogService } from '../../core/services/dialog.service';
 import { Product } from '../../shared/models/product';
-import { FormArray, FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -21,8 +21,12 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { forkJoin } from 'rxjs';
 import { SnackbarService } from '../../core/services/snackbar.service';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { AdminReviewsComponent } from './admin-reviews.component';
 import { getDefaultSizesForType } from '../../shared/utils/product-sizes';
+import { ProductSizeGuide, SizeGuideType } from '../../shared/models/size-guide';
+import { getDefaultSizeGuideForType, parseSizeGuide, stringifySizeGuide } from '../../shared/utils/size-guides';
+import { AdminSizeGuideDialogComponent } from './admin-size-guide-dialog.component';
 
 @Component({
   selector: 'app-admin',
@@ -45,6 +49,7 @@ import { getDefaultSizesForType } from '../../shared/utils/product-sizes';
     MatAutocompleteModule,
     MatCheckboxModule,
     MatSlideToggleModule,
+    MatDialogModule,
     AdminReviewsComponent
   ],
   templateUrl: './admin.component.html',
@@ -57,6 +62,7 @@ export class AdminComponent implements OnInit {
   private dialogService = inject(DialogService);
   private fb = inject(FormBuilder);
   private snackbar = inject(SnackbarService);
+  private dialog = inject(MatDialog);
   orderParams = new OrderParams();
   totalItems = 0;
   statusOptions = ['All', 'PaymentReceived', 'PaymentMismatch', 'Refunded', 'Pending'];
@@ -88,10 +94,27 @@ export class AdminComponent implements OnInit {
     isActive: [true],
     type: ['', Validators.required],
     brand: ['', Validators.required],
+    sizeGuide: this.fb.group({
+      type: [''],
+      title: [''],
+      howToMeasure: [''],
+      fitNotes: [''],
+      disclaimer: [''],
+      extraNotes: [''],
+      rows: this.fb.array([])
+    }),
     variants: this.fb.array([
       this.createVariantGroup()
     ])
   });
+  sizeGuideColumns: string[] = [];
+  sizeGuideTypeOptions: { label: string; value: SizeGuideType }[] = [
+    { label: 'Boots', value: 'boots' },
+    { label: 'Boards', value: 'boards' },
+    { label: 'Hats', value: 'hats' },
+    { label: 'Gloves', value: 'gloves' }
+  ];
+  private isSettingSizeGuide = false;
 
   ngOnInit(): void {
     this.loadOrders();
@@ -99,10 +122,42 @@ export class AdminComponent implements OnInit {
     this.loadFilters();
     this.setupFilterPredicate();
     this.productFilters.valueChanges.subscribe(() => this.applyProductFilters());
+    this.sizeGuideGroup.get('type')?.valueChanges.subscribe(value => {
+      if (this.isSettingSizeGuide) return;
+      const guideType = value as SizeGuideType | '';
+      if (!guideType) {
+        this.sizeGuideColumns = [];
+        this.clearSizeGuideRows();
+        return;
+      }
+      const template = getDefaultSizeGuideForType(guideType);
+      this.sizeGuideColumns = template?.columns ?? [];
+      this.syncSizeGuideRowsToColumns();
+      if (this.sizeGuideRows.length === 0 && this.sizeGuideColumns.length > 0) {
+        this.addSizeGuideRow();
+      }
+    });
+    this.productForm.get('type')?.valueChanges.subscribe(value => {
+      if (this.isSettingSizeGuide) return;
+      const currentGuideType = this.sizeGuideGroup.get('type')?.value as SizeGuideType | '';
+      if (currentGuideType) return;
+      const template = getDefaultSizeGuideForType(value);
+      if (template) {
+        this.setSizeGuide(template);
+      }
+    });
   }
 
   get variants(): FormArray {
     return this.productForm.get('variants') as FormArray;
+  }
+
+  get sizeGuideGroup(): FormGroup {
+    return this.productForm.get('sizeGuide') as FormGroup;
+  }
+
+  get sizeGuideRows(): FormArray {
+    return this.sizeGuideGroup.get('rows') as FormArray;
   }
 
   private createVariantGroup(size = '', quantity = 0) {
@@ -110,6 +165,89 @@ export class AdminComponent implements OnInit {
       size: [size, Validators.required],
       quantityInStock: [quantity, [Validators.required, Validators.min(0)]]
     });
+  }
+
+  private createSizeGuideRow(cells: string[] = []) {
+    return this.fb.array(cells.map(cell => this.fb.control(cell)));
+  }
+
+  private clearSizeGuideRows() {
+    while (this.sizeGuideRows.length > 0) {
+      this.sizeGuideRows.removeAt(0);
+    }
+  }
+
+  private setSizeGuide(guide: ProductSizeGuide | null) {
+    this.isSettingSizeGuide = true;
+    this.clearSizeGuideRows();
+
+    if (!guide) {
+      this.sizeGuideColumns = [];
+      this.sizeGuideGroup.reset({
+        type: '',
+        title: '',
+        howToMeasure: '',
+        fitNotes: '',
+        disclaimer: '',
+        extraNotes: '',
+        rows: []
+      }, { emitEvent: false });
+      this.isSettingSizeGuide = false;
+      return;
+    }
+
+    this.sizeGuideColumns = [...guide.columns];
+    this.sizeGuideGroup.patchValue({
+      type: guide.type,
+      title: guide.title,
+      howToMeasure: guide.howToMeasure ?? '',
+      fitNotes: guide.fitNotes ?? '',
+      disclaimer: guide.disclaimer ?? '',
+      extraNotes: (guide.extraNotes ?? []).join('\n')
+    }, { emitEvent: false });
+
+    guide.rows.forEach(row => this.sizeGuideRows.push(this.createSizeGuideRow(row)));
+    this.syncSizeGuideRowsToColumns();
+    this.isSettingSizeGuide = false;
+  }
+
+  private syncSizeGuideRowsToColumns() {
+    const colCount = this.sizeGuideColumns.length;
+    if (colCount === 0) return;
+    this.sizeGuideRows.controls.forEach(row => {
+      const rowArray = row as FormArray;
+      while (rowArray.length < colCount) {
+        rowArray.push(this.fb.control(''));
+      }
+      while (rowArray.length > colCount) {
+        rowArray.removeAt(rowArray.length - 1);
+      }
+    });
+  }
+
+  applySizeGuideTemplate() {
+    const guideType = this.sizeGuideGroup.get('type')?.value as SizeGuideType | '';
+    const template = getDefaultSizeGuideForType(guideType);
+    if (!template) {
+      this.snackbar.error('Select a size guide type first');
+      return;
+    }
+    this.setSizeGuide(template);
+  }
+
+  addSizeGuideRow() {
+    if (this.sizeGuideColumns.length === 0) return;
+    this.sizeGuideRows.push(this.createSizeGuideRow(new Array(this.sizeGuideColumns.length).fill('')));
+  }
+
+  removeSizeGuideRow(index: number) {
+    if (this.sizeGuideRows.length > 0) {
+      this.sizeGuideRows.removeAt(index);
+    }
+  }
+
+  getSizeGuideCellControl(row: AbstractControl, index: number): FormControl {
+    return (row as FormArray).at(index) as FormControl;
   }
 
   private buildDefaultVariants(type: string | null, useStockDefaults = false) {
@@ -133,6 +271,37 @@ export class AdminComponent implements OnInit {
       default:
         return 5 + index * 2;
     }
+  }
+
+  private buildSizeGuideFromForm(): ProductSizeGuide | null {
+    const guideType = this.sizeGuideGroup.get('type')?.value as SizeGuideType | '';
+    if (!guideType) return null;
+    const template = getDefaultSizeGuideForType(guideType);
+    const columns = this.sizeGuideColumns.length > 0
+      ? this.sizeGuideColumns
+      : template?.columns ?? [];
+    if (columns.length === 0) return null;
+
+    const rows = this.sizeGuideRows.controls.map(row =>
+      (row as FormArray).controls.map(control => (control.value ?? '').toString().trim())
+    );
+
+    const extraNotesRaw = (this.sizeGuideGroup.get('extraNotes')?.value ?? '') as string;
+    const extraNotes = extraNotesRaw
+      .split('\n')
+      .map(note => note.trim())
+      .filter(Boolean);
+
+    return {
+      type: guideType,
+      title: (this.sizeGuideGroup.get('title')?.value as string) || template?.title || 'Size guide',
+      columns,
+      rows,
+      howToMeasure: (this.sizeGuideGroup.get('howToMeasure')?.value as string) || null,
+      fitNotes: (this.sizeGuideGroup.get('fitNotes')?.value as string) || null,
+      disclaimer: (this.sizeGuideGroup.get('disclaimer')?.value as string) || null,
+      extraNotes
+    };
   }
 
   loadOrders() {
@@ -233,8 +402,11 @@ export class AdminComponent implements OnInit {
       : this.buildDefaultVariants(product.type, true);
     variantSource.forEach(v => this.variants.push(this.createVariantGroup(v.size, v.quantityInStock)));
     const onSale = !!(product.salePrice && product.salePrice > 0 && product.salePrice < product.price);
+    const sizeGuide = parseSizeGuide(product.sizeGuide) ?? getDefaultSizeGuideForType(product.type);
+    this.setSizeGuide(sizeGuide);
+    const { sizeGuide: _sizeGuide, ...productData } = product;
     this.productForm.patchValue({
-      ...product,
+      ...productData,
       salePrice: onSale ? product.salePrice : null,
       onSale,
       isActive: product.isActive ?? true,
@@ -251,6 +423,7 @@ export class AdminComponent implements OnInit {
     }
     this.buildDefaultVariants(null)
       .forEach(v => this.variants.push(this.createVariantGroup(v.size, v.quantityInStock)));
+    this.setSizeGuide(null);
     this.productForm.reset({
       id: 0,
       name: '',
@@ -263,7 +436,8 @@ export class AdminComponent implements OnInit {
       isActive: true,
       type: '',
       brand: '',
-      variants: this.variants.value
+      variants: this.variants.value,
+      sizeGuide: this.sizeGuideGroup.value
     });
     this.selectedFile = null;
     this.imagePreview = null;
@@ -283,6 +457,8 @@ export class AdminComponent implements OnInit {
       this.snackbar.success('Lowest price adjusted to the current price');
     }
     const formData = new FormData();
+    const sizeGuide = this.buildSizeGuideFromForm();
+    const sizeGuideJson = stringifySizeGuide(sizeGuide);
     formData.append('name', product.name ?? '');
     formData.append('description', product.description ?? '');
     formData.append('price', product.price?.toString() ?? '0');
@@ -298,6 +474,9 @@ export class AdminComponent implements OnInit {
     formData.append('isActive', (product.isActive ?? true).toString());
     formData.append('type', product.type ?? '');
     formData.append('brand', product.brand ?? '');
+    if (sizeGuideJson) {
+      formData.append('sizeGuide', sizeGuideJson);
+    }
     (this.variants.controls as any[]).forEach((ctrl, index) => {
       const value = ctrl.value;
       formData.append(`variants[${index}].size`, value.size ?? '');
@@ -438,5 +617,43 @@ export class AdminComponent implements OnInit {
       type: this.productFilters.get('type')?.value || ''
     };
     this.productDataSource.filter = JSON.stringify(filterValue);
+  }
+
+  get hasSizeGuide(): boolean {
+    return !!this.buildSizeGuideFromForm();
+  }
+
+  get sizeGuideSummary(): string {
+    const guide = this.buildSizeGuideFromForm();
+    if (!guide) return 'No size guide assigned.';
+    return `${guide.title} (${guide.columns.length} columns, ${guide.rows.length} rows)`;
+  }
+
+  openSizeGuideEditor() {
+    const currentGuide = this.buildSizeGuideFromForm()
+      ?? getDefaultSizeGuideForType(this.productForm.get('type')?.value)
+      ?? null;
+
+    const dialogRef = this.dialog.open(AdminSizeGuideDialogComponent, {
+      data: {
+        guide: currentGuide,
+        productType: this.productForm.get('type')?.value
+      },
+      width: '900px',
+      maxWidth: '95vw'
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result === undefined) return;
+      if (result === null) {
+        this.setSizeGuide(null);
+        return;
+      }
+      this.setSizeGuide(result);
+    });
+  }
+
+  clearSizeGuide() {
+    this.setSizeGuide(null);
   }
 }

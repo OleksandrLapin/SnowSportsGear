@@ -1,3 +1,5 @@
+import { ProductSizeGuide } from './size-guide';
+
 export type Product = {
     id: number;
     name: string;
@@ -14,6 +16,7 @@ export type Product = {
     lowestPrice?: number | null;
     color?: string | null;
     isActive?: boolean;
+    sizeGuide?: ProductSizeGuide | null;
 }
 
 export type ProductVariant = {

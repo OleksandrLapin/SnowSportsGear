@@ -12,8 +12,12 @@ import { CartService } from '../../../core/services/cart.service';
 import { FormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
 import { SnackbarService } from '../../../core/services/snackbar.service';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { StarRatingComponent } from '../../../shared/components/rating/star-rating.component';
 import { ProductReviewsComponent } from './product-reviews.component';
+import { ProductSizeGuide } from '../../../shared/models/size-guide';
+import { parseSizeGuide } from '../../../shared/utils/size-guides';
+import { SizeGuideDialogComponent } from './size-guide-dialog.component';
 
 @Component({
   selector: 'app-product-details',
@@ -29,6 +33,7 @@ import { ProductReviewsComponent } from './product-reviews.component';
     FormsModule,
     MatSelectModule,
     NgClass,
+    MatDialogModule,
     StarRatingComponent,
     ProductReviewsComponent
   ],
@@ -40,7 +45,9 @@ export class ProductDetailsComponent implements OnInit {
   private activatedRoute = inject(ActivatedRoute);
   private cartService = inject(CartService);
   private snackbar = inject(SnackbarService);
+  private dialog = inject(MatDialog);
   product?: Product;
+  sizeGuide: ProductSizeGuide | null = null;
   quantityInCart = 0;
   quantity = 1;
   selectedSize: string | null = null;
@@ -59,6 +66,7 @@ export class ProductDetailsComponent implements OnInit {
     this.shopService.getProduct(+id).subscribe({
       next: product => {
         this.product = product;
+        this.sizeGuide = parseSizeGuide(product.sizeGuide);
         this.selectedSize = this.firstAvailableSize();
         this.updateQuantityInCart();
         if (this.shouldScrollToReviews) {
@@ -169,6 +177,19 @@ export class ProductDetailsComponent implements OnInit {
     if (!this.product) return 0;
     if (this.hasSale && this.product?.salePrice) return this.product.salePrice;
     return this.product.price;
+  }
+
+  get hasSizeGuide(): boolean {
+    return !!this.sizeGuide;
+  }
+
+  openSizeGuide() {
+    if (!this.sizeGuide) return;
+    this.dialog.open(SizeGuideDialogComponent, {
+      data: this.sizeGuide,
+      width: '720px',
+      maxWidth: '90vw'
+    });
   }
 
   private firstAvailableSize(): string | null {

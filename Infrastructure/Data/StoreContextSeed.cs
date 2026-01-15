@@ -52,6 +52,8 @@ public class StoreContextSeed
                 var product = seedProduct.ToProduct();
                 PopulateImage(product, path);
                 product.Variants = BuildDefaultVariants(product.Type);
+                product.SizeGuide = ProductSizeGuideDefaults.Serialize(
+                    ProductSizeGuideDefaults.GetDefaultForType(product.Type));
                 context.Products.Add(product);
             }
             await context.SaveChangesAsync();
@@ -91,15 +93,30 @@ public class StoreContextSeed
             .ToListAsync();
 
         var variantsUpdated = false;
+        var descriptionsUpdated = false;
+        var sizeGuidesUpdated = false;
+        var seedByName = products.ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
         foreach (var product in productsInDb)
         {
             if (EnsureProductVariants(product))
             {
                 variantsUpdated = true;
             }
+
+            if (seedByName.TryGetValue(product.Name, out var seed) &&
+                !string.Equals(product.Description, seed.Description, StringComparison.Ordinal))
+            {
+                product.Description = seed.Description;
+                descriptionsUpdated = true;
+            }
+
+            if (EnsureProductSizeGuide(product))
+            {
+                sizeGuidesUpdated = true;
+            }
         }
 
-        if (variantsUpdated)
+        if (variantsUpdated || descriptionsUpdated || sizeGuidesUpdated)
         {
             await context.SaveChangesAsync();
         }
@@ -342,6 +359,17 @@ public class StoreContextSeed
             product.Variants.Add(variant);
         }
 
+        return true;
+    }
+
+    private static bool EnsureProductSizeGuide(Product product)
+    {
+        if (!string.IsNullOrWhiteSpace(product.SizeGuide)) return false;
+
+        var guide = ProductSizeGuideDefaults.GetDefaultForType(product.Type);
+        if (guide == null) return false;
+
+        product.SizeGuide = ProductSizeGuideDefaults.Serialize(guide);
         return true;
     }
 

@@ -72,6 +72,12 @@
                                 }
                             </mat-select>
                         </mat-form-field>
+                        @if (hasSizeGuide) {
+                            <button type="button" mat-stroked-button (click)="openSizeGuide()">
+                                <mat-icon>straighten</mat-icon>
+                                Size guide
+                            </button>
+                        }
                         @if (!selectedSize) {
                             <span class="text-sm text-gray-500">Please select a size</span>
                         }

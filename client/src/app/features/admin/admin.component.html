@@ -256,6 +256,16 @@
                                     }
                                 </div>
                             </div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-semibold">Size guide</h4>
+                                    <p class="text-sm text-gray-500">{{sizeGuideSummary}}</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button type="button" mat-stroked-button (click)="openSizeGuideEditor()">Edit size guide</button>
+                                    <button type="button" mat-button color="warn" (click)="clearSizeGuide()" [disabled]="!hasSizeGuide">Remove</button>
+                                </div>
+                            </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <mat-form-field appearance="outline" class="w-full">
                                     <mat-label>Brand</mat-label>

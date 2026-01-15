@@ -1,0 +1,131 @@
+<h2 mat-dialog-title>Size guide editor</h2>
+<div mat-dialog-content>
+  <form [formGroup]="guideForm" class="space-y-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Guide type</mat-label>
+        <mat-select formControlName="type">
+          @for (option of typeOptions; track option.value) {
+            <mat-option [value]="option.value">{{option.label}}</mat-option>
+          }
+        </mat-select>
+        @if (guideForm.get('type')?.invalid && guideForm.get('type')?.touched) {
+          <mat-error>Select a guide type</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Title</mat-label>
+        <input matInput formControlName="title" placeholder="Size guide title">
+        @if (guideForm.get('title')?.invalid && guideForm.get('title')?.touched) {
+          <mat-error>Title is required</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    <div class="flex flex-wrap gap-2 items-center">
+      <button mat-stroked-button type="button" (click)="applyTemplate()" [disabled]="!canApplyTemplate">
+        Load default template
+      </button>
+      <button mat-stroked-button type="button" (click)="addColumn()">Add column</button>
+      <button mat-stroked-button type="button" (click)="addRow()" [disabled]="columns.length === 0">Add row</button>
+    </div>
+
+    <div class="border rounded-lg overflow-x-auto">
+      @if (columns.length === 0) {
+        <div class="p-4 text-sm text-gray-500">
+          Add at least one column to build the size table.
+        </div>
+      } @else {
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              @for (column of columns.controls; let colIndex = $index; track colIndex) {
+                <th class="px-2 py-2 border-b align-top">
+                  <div class="flex items-start gap-2">
+                    <mat-form-field appearance="outline" class="w-40">
+                      <mat-label>Column {{colIndex + 1}}</mat-label>
+                      <input matInput [formControl]="asFormControl(column)" placeholder="Name">
+                      @if (column.invalid && column.touched) {
+                        <mat-error>Required</mat-error>
+                      }
+                    </mat-form-field>
+                    <button
+                      type="button"
+                      mat-icon-button
+                      color="warn"
+                      (click)="removeColumn(colIndex)"
+                      aria-label="Remove column"
+                    >
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </th>
+              }
+              <th class="px-2 py-2 border-b text-right">Row</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows.controls; let rowIndex = $index; track rowIndex) {
+              <tr class="border-b">
+                @for (cell of getRowControls(row).controls; let colIndex = $index; track colIndex) {
+                  <td class="px-2 py-2 align-top">
+                    <mat-form-field appearance="outline" class="w-40">
+                      <input matInput [formControl]="asFormControl(cell)" placeholder="Value">
+                    </mat-form-field>
+                  </td>
+                }
+                <td class="px-2 py-2 text-right">
+                  <button
+                    type="button"
+                    mat-icon-button
+                    color="warn"
+                    (click)="removeRow(rowIndex)"
+                    aria-label="Remove row"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>How to measure</mat-label>
+        <textarea matInput rows="2" formControlName="howToMeasure"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Fit notes</mat-label>
+        <textarea matInput rows="2" formControlName="fitNotes"></textarea>
+      </mat-form-field>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Disclaimer / warning</mat-label>
+        <textarea matInput rows="2" formControlName="disclaimer"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>Extra notes (one per line)</mat-label>
+        <textarea matInput rows="2" formControlName="extraNotes"></textarea>
+      </mat-form-field>
+    </div>
+  </form>
+</div>
+
+<div mat-dialog-actions align="end" class="flex flex-wrap gap-2">
+  <button mat-button type="button" (click)="cancel()">Cancel</button>
+  <button mat-button color="warn" type="button" (click)="removeGuide()">Remove guide</button>
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    (click)="save()"
+    [disabled]="guideForm.invalid || columns.length === 0"
+  >
+    Save
+  </button>
+</div>

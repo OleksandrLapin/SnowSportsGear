@@ -1,6 +1,7 @@
 using API.DTOs;
 using Core.Entities;
 using Core.Helpers;
+using Core.Models;
 
 namespace API.Extensions;
 
@@ -12,6 +13,7 @@ public static class ProductMappingExtensions
             (product.PictureData != null && product.PictureData.Length > 0);
         var variants = EnsureDefaultVariants(product.Variants, product.Type);
         var totalQuantity = variants.Sum(v => v.QuantityInStock);
+        var sizeGuide = TryGetSizeGuide(product.SizeGuide);
         var imagePath = hasStoredImage
             ? "api/products/{id}/image"
             : product.PictureUrl?.TrimStart('/') ?? string.Empty;
@@ -41,6 +43,7 @@ public static class ProductMappingExtensions
             LowestPrice = product.LowestPrice,
             Color = product.Color,
             IsActive = product.IsActive,
+            SizeGuide = sizeGuide,
             PictureUrl = imagePath,
             Type = product.Type,
             Brand = product.Brand,
@@ -78,5 +81,10 @@ public static class ProductMappingExtensions
         .OrderBy(v => Array.IndexOf(defaultOrder, v.Size))
         .ThenBy(v => v.Size, StringComparer.OrdinalIgnoreCase)
         .ToList();
+    }
+
+    private static ProductSizeGuide? TryGetSizeGuide(string? json)
+    {
+        return ProductSizeGuideDefaults.TryDeserialize(json, out var guide) ? guide : null;
     }
 }
