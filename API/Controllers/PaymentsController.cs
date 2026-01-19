@@ -1,21 +1,31 @@
 ﻿using API.Extensions;
 using API.SignalR;
+using API.Helpers;
+using Core.Constants;
 using Core.Entities;
 using Core.Entities.OrderAggregate;
 using Core.Interfaces;
 using Core.Specifications;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
+using Core.Settings;
+using System.Globalization;
 using Stripe;
 
 namespace API.Controllers;
 
-public class PaymentsController(IPaymentService paymentService, 
-    IUnitOfWork unit, ILogger<PaymentsController> logger, 
-    IConfiguration config, IHubContext<NotificationHub> hubContext) : BaseApiController
+public class PaymentsController(IPaymentService paymentService,
+    IUnitOfWork unit, ILogger<PaymentsController> logger,
+    IConfiguration config, IHubContext<NotificationHub> hubContext,
+    INotificationService notificationService,
+    UserManager<AppUser> userManager,
+    IOptions<NotificationSettings> notificationOptions) : BaseApiController
 {
     private readonly string _whSecret = config["StripeSettings:WhSecret"]!;
+    private static readonly CultureInfo CurrencyCulture = CultureInfo.GetCultureInfo("en-US");
 
     [Authorize]
     [HttpPost("{cartId}")]
@@ -87,6 +97,8 @@ public class PaymentsController(IPaymentService paymentService,
 
             await unit.Complete();
 
+            await SendPaymentNotificationsAsync(order, intent.Amount, notificationOptions.Value, notificationService, userManager);
+
             var connectionId = NotificationHub.GetConnectionIdByEmail(order.BuyerEmail);
 
             if (!string.IsNullOrEmpty(connectionId))
@@ -109,5 +121,55 @@ public class PaymentsController(IPaymentService paymentService,
             logger.LogError(ex, "Failed to construct stripe event");
             throw new StripeException("Invalid signature");
         }
+    }
+
+    private static async Task SendPaymentNotificationsAsync(
+        Order order,
+        long actualAmount,
+        NotificationSettings settings,
+        INotificationService notificationService,
+        UserManager<AppUser> userManager)
+    {
+        var tokens = NotificationTokenBuilder.BuildOrderTokens(order, settings);
+
+        if (order.Status == OrderStatus.PaymentMismatch)
+        {
+            tokens["ExpectedAmount"] = order.GetTotal().ToString("C", CurrencyCulture);
+            tokens["ActualAmount"] = (actualAmount / 100m).ToString("C", CurrencyCulture);
+
+            await notificationService.SendAsync(new Core.Models.Notifications.NotificationRequest(
+                NotificationTemplateKeys.OrderPaymentDeclined,
+                order.BuyerEmail,
+                tokens));
+
+            var adminRequests = await BuildAdminRequestsAsync(userManager, NotificationTemplateKeys.AdminFeeMismatch, tokens);
+            await notificationService.SendBulkAsync(adminRequests);
+
+            return;
+        }
+
+        await notificationService.SendAsync(new Core.Models.Notifications.NotificationRequest(
+            NotificationTemplateKeys.OrderPaymentReceived,
+            order.BuyerEmail,
+            tokens));
+
+        var adminPaidRequests = await BuildAdminRequestsAsync(userManager, NotificationTemplateKeys.AdminOrderPaid, tokens);
+        await notificationService.SendBulkAsync(adminPaidRequests);
+    }
+
+    private static async Task<List<Core.Models.Notifications.NotificationRequest>> BuildAdminRequestsAsync(
+        UserManager<AppUser> userManager,
+        string templateKey,
+        IDictionary<string, string> tokens)
+    {
+        var admins = await userManager.GetUsersInRoleAsync("Admin");
+        return admins
+            .Where(a => !string.IsNullOrWhiteSpace(a.Email))
+            .Select(a => new Core.Models.Notifications.NotificationRequest(
+                templateKey,
+                a.Email ?? string.Empty,
+                tokens,
+                a.Id))
+            .ToList();
     }
 }

@@ -1,17 +1,25 @@
 using API.DTOs;
 using API.Extensions;
 using API.RequestHelpers;
+using Core.Constants;
 using Core.Entities;
 using Core.Interfaces;
 using Core.Specifications;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Core.Settings;
 
 namespace API.Controllers;
 
 [Authorize]
-public class ReviewsController(IReviewRepository reviewRepo, IProductRepository productRepo, UserManager<AppUser> userManager) : BaseApiController
+public class ReviewsController(
+    IReviewRepository reviewRepo,
+    IProductRepository productRepo,
+    UserManager<AppUser> userManager,
+    INotificationService notificationService,
+    IOptions<NotificationSettings> notificationOptions) : BaseApiController
 {
     [AllowAnonymous]
     [HttpGet("/api/products/{productId:int}/reviews")]
@@ -111,6 +119,21 @@ public class ReviewsController(IReviewRepository reviewRepo, IProductRepository 
 
         await reviewRepo.UpdateProductRatingAsync(productId);
         await reviewRepo.SaveChangesAsync();
+
+        var product = await productRepo.GetProductByIdAsync(productId);
+        if (product != null)
+        {
+            var tokens = new Dictionary<string, string>
+            {
+                ["ProductName"] = product.Name,
+                ["CustomerEmail"] = user.Email ?? string.Empty,
+                ["Rating"] = dto.Rating.ToString(),
+                ["AdminReviewUrl"] = $"{notificationOptions.Value.StoreUrl}/admin"
+            };
+
+            var adminRequests = await BuildAdminRequestsAsync(userManager, NotificationTemplateKeys.AdminNewReview, tokens);
+            await notificationService.SendBulkAsync(adminRequests);
+        }
 
         var saved = await reviewRepo.GetReviewByIdAsync(review.Id);
         return Ok(saved?.ToDto(user.Id) ?? review.ToDto(user.Id));
@@ -215,5 +238,21 @@ public class ReviewsController(IReviewRepository reviewRepo, IProductRepository 
         if (!User.Identity?.IsAuthenticated ?? true) return null;
         var user = await userManager.GetUserByEmail(User);
         return user.Id;
+    }
+
+    private static async Task<List<Core.Models.Notifications.NotificationRequest>> BuildAdminRequestsAsync(
+        UserManager<AppUser> userManager,
+        string templateKey,
+        IDictionary<string, string> tokens)
+    {
+        var admins = await userManager.GetUsersInRoleAsync("Admin");
+        return admins
+            .Where(a => !string.IsNullOrWhiteSpace(a.Email))
+            .Select(a => new Core.Models.Notifications.NotificationRequest(
+                templateKey,
+                a.Email ?? string.Empty,
+                tokens,
+                a.Id))
+            .ToList();
     }
 }

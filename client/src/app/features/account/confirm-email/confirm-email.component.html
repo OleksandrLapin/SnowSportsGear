@@ -1,0 +1,27 @@
+<mat-card class="max-w-lg mx-auto mt-32 p-8 bg-white">
+  <form [formGroup]="form" (ngSubmit)="confirm()">
+    <div class="text-center mb-6">
+      <h1 class="text-3xl font-semibold text-primary">Confirm email</h1>
+      <p class="text-sm text-gray-600 mt-2">Enter the confirmation code from your email.</p>
+    </div>
+    @if (!emailLocked) {
+      <mat-form-field appearance="outline" class="w-full mb-4">
+        <mat-label>Email address</mat-label>
+        <input formControlName="email" type="email" placeholder="name@example.com" matInput />
+      </mat-form-field>
+    } @else {
+      <div class="mb-4 text-sm text-gray-600">
+        Code sent to <span class="font-medium">{{ form.get('email')?.value }}</span>
+      </div>
+    }
+    <mat-form-field appearance="outline" class="w-full mb-4">
+      <mat-label>Confirmation code</mat-label>
+      <input formControlName="token" placeholder="Paste the code" matInput />
+    </mat-form-field>
+    <button mat-flat-button type="submit" class="w-full py-2">Confirm email</button>
+    <div class="flex justify-between items-center mt-4 text-sm">
+      <button type="button" class="text-primary hover:underline" (click)="resend()">Resend code</button>
+      <a routerLink="/account/login" class="text-primary hover:underline">Back to login</a>
+    </div>
+  </form>
+</mat-card>

@@ -1,13 +1,18 @@
 ﻿using API.DTOs;
 using API.Extensions;
+using API.Helpers;
 using API.Specifications;
+using Core.Constants;
 using Core.Entities;
 using Core.Entities.OrderAggregate;
 using Core.Interfaces;
 using Core.Specifications;
 using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Core.Settings;
 
 namespace API.Controllers;
 
@@ -16,7 +21,10 @@ public class OrdersController(
     ICartService cartService,
     IUnitOfWork unit,
     IProductRepository productRepository,
-    IReviewRepository reviewRepository) : BaseApiController
+    IReviewRepository reviewRepository,
+    INotificationService notificationService,
+    UserManager<AppUser> userManager,
+    IOptions<NotificationSettings> notificationOptions) : BaseApiController
 {
     [HttpPost]
     public async Task<ActionResult<Order>> CreateOrder(CreateOrderDto orderDto)
@@ -80,6 +88,9 @@ public class OrdersController(
             Status = OrderStatus.PaymentReceived
         };
 
+        var lowStockRequests = new List<Core.Models.Notifications.NotificationRequest>();
+        var lowStockThreshold = notificationOptions.Value.LowStockThreshold;
+
         // decrement stock
         foreach (var item in items)
         {
@@ -89,8 +100,24 @@ public class OrdersController(
                 var variant = productItem.Variants.FirstOrDefault(v => v.Size == item.Size);
                 if (variant != null)
                 {
+                    var previousQty = variant.QuantityInStock;
                     variant.QuantityInStock -= item.Quantity;
                     unit.Repository<Product>().Update(productItem);
+
+                    if (previousQty > lowStockThreshold && variant.QuantityInStock <= lowStockThreshold)
+                    {
+                        var tokens = new Dictionary<string, string>
+                        {
+                            ["ProductName"] = productItem.Name,
+                            ["Variant"] = variant.Size,
+                            ["Quantity"] = variant.QuantityInStock.ToString(),
+                            ["AdminProductUrl"] = $"{notificationOptions.Value.StoreUrl}/admin"
+                        };
+                        lowStockRequests.AddRange(await BuildAdminRequestsAsync(
+                            userManager,
+                            NotificationTemplateKeys.AdminInventoryLow,
+                            tokens));
+                    }
                 }
             }
         }
@@ -99,6 +126,22 @@ public class OrdersController(
 
         if (await unit.Complete())
         {
+            var tokens = NotificationTokenBuilder.BuildOrderTokens(order, notificationOptions.Value);
+            var orderRequest = new Core.Models.Notifications.NotificationRequest(
+                NotificationTemplateKeys.OrderCreated,
+                order.BuyerEmail,
+                tokens);
+
+            await notificationService.SendAsync(orderRequest);
+
+            var adminRequests = await BuildAdminRequestsAsync(userManager, NotificationTemplateKeys.AdminNewOrder, tokens);
+            await notificationService.SendBulkAsync(adminRequests);
+
+            if (lowStockRequests.Count > 0)
+            {
+                await notificationService.SendBulkAsync(lowStockRequests);
+            }
+
             return order;
         }
 
@@ -142,5 +185,21 @@ public class OrdersController(
         var reviewLookup = userReviews.ToDictionary(r => r.ProductId, r => r);
 
         return order.ToDto(reviewLookup);
+    }
+
+    private static async Task<List<Core.Models.Notifications.NotificationRequest>> BuildAdminRequestsAsync(
+        UserManager<AppUser> userManager,
+        string templateKey,
+        IDictionary<string, string> tokens)
+    {
+        var admins = await userManager.GetUsersInRoleAsync("Admin");
+        return admins
+            .Where(a => !string.IsNullOrWhiteSpace(a.Email))
+            .Select(a => new Core.Models.Notifications.NotificationRequest(
+                templateKey,
+                a.Email ?? string.Empty,
+                tokens,
+                a.Id))
+            .ToList();
     }
 }

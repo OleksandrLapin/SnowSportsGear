@@ -1,0 +1,13 @@
+<mat-card class="max-w-lg mx-auto mt-32 p-8 bg-white">
+  <div class="text-center">
+    <h1 class="text-3xl font-semibold text-primary mb-2">Confirm email change</h1>
+    @if (processing) {
+      <p class="text-sm text-gray-600">Confirming your new email address...</p>
+    } @else {
+      <p class="text-sm text-gray-600">You can now continue with your account.</p>
+      <div class="mt-4">
+        <a routerLink="/account/profile" class="text-primary hover:underline">Go to profile</a>
+      </div>
+    }
+  </div>
+</mat-card>

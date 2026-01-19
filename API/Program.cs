@@ -2,6 +2,7 @@ using API.Middleware;
 using API.SignalR;
 using Core.Entities;
 using Core.Interfaces;
+using Core.Settings;
 using Infrastructure;
 using Infrastructure.Data;
 using Infrastructure.Services;
@@ -37,7 +38,25 @@ builder.Services.AddSingleton<IResponseCacheService, ResponseCacheService>();
 builder.Services.AddAuthorization();
 builder.Services.AddIdentityApiEndpoints<AppUser>()
     .AddRoles<IdentityRole>()
-    .AddEntityFrameworkStores<StoreContext>();
+    .AddEntityFrameworkStores<StoreContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    options.SignIn.RequireConfirmedEmail = true;
+    options.Lockout.MaxFailedAccessAttempts = 7;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+});
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+{
+    options.TokenLifespan = TimeSpan.FromMinutes(30);
+});
+
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.Configure<NotificationSettings>(builder.Configuration.GetSection("NotificationSettings"));
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<INotificationSender, SmtpEmailSender>();
+builder.Services.AddSingleton<INotificationTemplateRenderer, NotificationTemplateRenderer>();
 
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<ICouponService, CouponService>();

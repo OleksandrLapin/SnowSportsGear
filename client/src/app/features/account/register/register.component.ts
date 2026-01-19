@@ -43,7 +43,13 @@ export class RegisterComponent {
 
   onSubmit() {
     this.accountService.register(this.registerForm.value).subscribe({
-      next: () => {
+      next: result => {
+        if (result?.requiresEmailConfirmation) {
+          this.snack.success(result.message || 'Check your email to confirm your account');
+          const email = this.registerForm.value.email ?? '';
+          this.router.navigate(['/account/confirm-email'], {queryParams: {email}});
+          return;
+        }
         this.snack.success('Registration successful - you can now login');
         this.router.navigateByUrl('/account/login');
       },

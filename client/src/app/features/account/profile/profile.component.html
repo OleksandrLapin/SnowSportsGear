@@ -38,4 +38,56 @@
       </form>
     </div>
   </mat-card>
+
+  <mat-card class="mt-6">
+    <div class="p-4 space-y-4">
+      <div>
+        <h3 class="text-xl font-semibold">Security</h3>
+        <p class="text-sm text-gray-600">Manage verification and password recovery.</p>
+      </div>
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="font-medium">Two-factor authentication</div>
+          <div class="text-sm text-gray-600">Require a code sent to your email when signing in.</div>
+        </div>
+        <mat-slide-toggle [checked]="twoFactorEnabled" (change)="toggleTwoFactor($event)"></mat-slide-toggle>
+      </div>
+      <mat-divider></mat-divider>
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="font-medium">Reset password via email</div>
+          <div class="text-sm text-gray-600">Send yourself a secure reset link.</div>
+        </div>
+        <button mat-stroked-button color="primary" type="button" (click)="requestPasswordReset()">Send reset email</button>
+      </div>
+    </div>
+  </mat-card>
+
+  <mat-card class="mt-6">
+    <div class="p-4">
+      <h3 class="text-xl font-semibold mb-4">Change email</h3>
+      <form [formGroup]="emailForm" class="grid grid-cols-1 md:grid-cols-2 gap-4" (ngSubmit)="requestEmailChange()">
+        <mat-form-field appearance="outline" class="w-full md:col-span-2">
+          <mat-label>New email address</mat-label>
+          <input matInput formControlName="newEmail" placeholder="name@example.com">
+        </mat-form-field>
+        <div class="md:col-span-2 flex justify-end">
+          <button mat-flat-button color="primary" type="submit">Send confirmation</button>
+        </div>
+      </form>
+    </div>
+  </mat-card>
+
+  <mat-card class="mt-6">
+    <div class="p-4 space-y-4">
+      <div>
+        <h3 class="text-xl font-semibold">Privacy requests</h3>
+        <p class="text-sm text-gray-600">Request a data export or account deletion.</p>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <button mat-stroked-button type="button" (click)="requestDataExport()">Request data export</button>
+        <button mat-stroked-button color="warn" type="button" (click)="requestDeletion()">Request deletion</button>
+      </div>
+    </div>
+  </mat-card>
 </div>

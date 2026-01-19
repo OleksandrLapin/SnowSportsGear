@@ -1,5 +1,6 @@
 ﻿using Core.Entities;
 using Core.Entities.OrderAggregate;
+using Core.Entities.Notifications;
 using Infrastructure.Config;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,8 @@ public class StoreContext(DbContextOptions options) : IdentityDbContext<AppUser>
     public DbSet<OrderItem> OrderItems { get; set; }
     public DbSet<ProductReview> ProductReviews { get; set; }
     public DbSet<ReviewAudit> ReviewAudits { get; set; }
+    public DbSet<NotificationTemplate> NotificationTemplates { get; set; }
+    public DbSet<NotificationMessage> NotificationMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

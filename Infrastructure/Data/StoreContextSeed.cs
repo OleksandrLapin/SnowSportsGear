@@ -1,7 +1,9 @@
 ﻿using System.Reflection;
+using System.Data;
 using System.Text.Json;
 using Core.Entities;
 using Core.Helpers;
+using Core.Entities.Notifications;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,9 +23,17 @@ public class StoreContextSeed
             {
                 UserName = "admin@test.com",
                 Email = "admin@test.com",
+                EmailConfirmed = true,
+                TwoFactorEnabled = true
             };
 
             await userManager.CreateAsync(adminUser, DefaultPassword);
+        }
+        else if (!adminUser.EmailConfirmed || !adminUser.TwoFactorEnabled)
+        {
+            adminUser.EmailConfirmed = true;
+            adminUser.TwoFactorEnabled = true;
+            await userManager.UpdateAsync(adminUser);
         }
 
         var adminRoles = await userManager.GetRolesAsync(adminUser);
@@ -222,6 +232,103 @@ public class StoreContextSeed
             context.DeliveryMethods.AddRange(methods);
 
             await context.SaveChangesAsync();
+        }
+
+        await EnsureNotificationTemplatesAsync(context);
+    }
+
+    private static async Task EnsureNotificationTemplatesAsync(StoreContext context)
+    {
+        await EnsureNotificationTablesAsync(context);
+
+        if (!await context.NotificationTemplates.AnyAsync())
+        {
+            context.NotificationTemplates.AddRange(NotificationTemplateDefaults.GetDefaults());
+            await context.SaveChangesAsync();
+            return;
+        }
+
+        var existingKeys = await context.NotificationTemplates
+            .Select(t => t.Key)
+            .ToListAsync();
+
+        var existingSet = new HashSet<string>(existingKeys, StringComparer.OrdinalIgnoreCase);
+        var toAdd = NotificationTemplateDefaults.GetDefaults()
+            .Where(t => !existingSet.Contains(t.Key))
+            .ToList();
+
+        if (toAdd.Count > 0)
+        {
+            context.NotificationTemplates.AddRange(toAdd);
+            await context.SaveChangesAsync();
+        }
+    }
+
+    private static async Task EnsureNotificationTablesAsync(StoreContext context)
+    {
+        var connection = context.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+
+        if (shouldClose)
+        {
+            await connection.OpenAsync();
+        }
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = @"
+IF OBJECT_ID(N'[NotificationTemplates]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [NotificationTemplates] (
+        [Id] int NOT NULL IDENTITY,
+        [Key] nvarchar(200) NOT NULL,
+        [Category] int NOT NULL,
+        [Channel] int NOT NULL,
+        [Subject] nvarchar(200) NOT NULL,
+        [Headline] nvarchar(200) NOT NULL,
+        [Body] nvarchar(4000) NOT NULL,
+        [CtaLabel] nvarchar(120) NULL,
+        [CtaUrl] nvarchar(1000) NULL,
+        [Footer] nvarchar(1000) NULL,
+        [IsActive] bit NOT NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        [UpdatedAt] datetime2 NOT NULL,
+        CONSTRAINT [PK_NotificationTemplates] PRIMARY KEY ([Id])
+    );
+    CREATE UNIQUE INDEX [IX_NotificationTemplates_Key] ON [NotificationTemplates] ([Key]);
+END;
+
+IF OBJECT_ID(N'[NotificationMessages]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [NotificationMessages] (
+        [Id] int NOT NULL IDENTITY,
+        [TemplateKey] nvarchar(200) NOT NULL,
+        [Channel] int NOT NULL,
+        [RecipientEmail] nvarchar(256) NOT NULL,
+        [RecipientUserId] nvarchar(max) NULL,
+        [Subject] nvarchar(200) NOT NULL,
+        [HtmlBody] nvarchar(max) NOT NULL,
+        [TextBody] nvarchar(4000) NULL,
+        [Status] int NOT NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        [SentAt] datetime2 NULL,
+        [Error] nvarchar(2000) NULL,
+        [Metadata] nvarchar(4000) NULL,
+        CONSTRAINT [PK_NotificationMessages] PRIMARY KEY ([Id])
+    );
+    CREATE INDEX [IX_NotificationMessages_TemplateKey] ON [NotificationMessages] ([TemplateKey]);
+    CREATE INDEX [IX_NotificationMessages_RecipientEmail] ON [NotificationMessages] ([RecipientEmail]);
+    CREATE INDEX [IX_NotificationMessages_Status] ON [NotificationMessages] ([Status]);
+END;";
+            await command.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
         }
     }
 
@@ -476,10 +583,18 @@ public class StoreContextSeed
                     UserName = sample.Email,
                     Email = sample.Email,
                     FirstName = sample.FirstName,
-                    LastName = sample.LastName
+                    LastName = sample.LastName,
+                    EmailConfirmed = true,
+                    TwoFactorEnabled = true
                 };
 
                 await userManager.CreateAsync(user, DefaultPassword);
+            }
+            else if (!user.EmailConfirmed || !user.TwoFactorEnabled)
+            {
+                user.EmailConfirmed = true;
+                user.TwoFactorEnabled = true;
+                await userManager.UpdateAsync(user);
             }
 
             users.Add(user);

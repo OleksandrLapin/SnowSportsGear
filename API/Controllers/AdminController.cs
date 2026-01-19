@@ -1,17 +1,28 @@
 using API.DTOs;
 using API.Extensions;
+using API.Helpers;
 using API.RequestHelpers;
 using API.Specifications;
+using Core.Constants;
+using Core.Entities;
 using Core.Entities.OrderAggregate;
 using Core.Interfaces;
 using Core.Specifications;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Core.Settings;
 
 namespace API.Controllers;
 
 [Authorize(Roles = "Admin")]
-public class AdminController(IUnitOfWork unit, IPaymentService paymentService) : BaseApiController
+public class AdminController(
+    IUnitOfWork unit,
+    IPaymentService paymentService,
+    INotificationService notificationService,
+    UserManager<AppUser> userManager,
+    IOptions<NotificationSettings> notificationOptions) : BaseApiController
 {
     [HttpGet("orders")]
     public async Task<ActionResult<Pagination<OrderSummaryDto>>> GetOrders([FromQuery]OrderSpecParams specParams)
@@ -55,8 +66,24 @@ public class AdminController(IUnitOfWork unit, IPaymentService paymentService) :
 
             await unit.Complete();
 
+            var tokens = NotificationTokenBuilder.BuildOrderTokens(order, notificationOptions.Value);
+            tokens["OrderStatus"] = "Refunded";
+
+            await notificationService.SendAsync(new Core.Models.Notifications.NotificationRequest(
+                NotificationTemplateKeys.OrderStatusUpdated,
+                order.BuyerEmail,
+                tokens));
+
+            var adminRequests = await BuildAdminRequestsAsync(userManager, NotificationTemplateKeys.AdminRefundSuccess, tokens);
+            await notificationService.SendBulkAsync(adminRequests);
+
             return ToSummary(order);
         }
+
+        var failTokens = NotificationTokenBuilder.BuildOrderTokens(order, notificationOptions.Value);
+        failTokens["ErrorMessage"] = "Refund failed";
+        var adminFailRequests = await BuildAdminRequestsAsync(userManager, NotificationTemplateKeys.AdminRefundFailed, failTokens);
+        await notificationService.SendBulkAsync(adminFailRequests);
 
         return BadRequest("Problem refunding order");
     }
@@ -73,5 +100,21 @@ public class AdminController(IUnitOfWork unit, IPaymentService paymentService) :
             Status = order.Status.ToString(),
             Total = order.Subtotal - order.Discount + deliveryPrice
         };
+    }
+
+    private static async Task<List<Core.Models.Notifications.NotificationRequest>> BuildAdminRequestsAsync(
+        UserManager<AppUser> userManager,
+        string templateKey,
+        IDictionary<string, string> tokens)
+    {
+        var admins = await userManager.GetUsersInRoleAsync("Admin");
+        return admins
+            .Where(a => !string.IsNullOrWhiteSpace(a.Email))
+            .Select(a => new Core.Models.Notifications.NotificationRequest(
+                templateKey,
+                a.Email ?? string.Empty,
+                tokens,
+                a.Id))
+            .ToList();
     }
 }

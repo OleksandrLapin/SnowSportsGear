@@ -5,6 +5,7 @@ export type User = {
     address: Address;
     roles: string | string[];
     isAdmin?: boolean;
+    twoFactorEnabled?: boolean;
 }
 
 export type Address = {

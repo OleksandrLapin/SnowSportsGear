@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { environment } from '../../../environments/environment';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Address, User } from '../../shared/models/user';
 import { map, switchMap, tap } from 'rxjs';
 import { SignalrService } from './signalr.service';
@@ -19,17 +19,21 @@ export class AccountService {
     return Array.isArray(roles) ? roles.includes('Admin') : roles === 'Admin';
   });
 
-  login(values: any) {
-    let params = new HttpParams();
-    params = params.append('useCookies', true);
-    return this.http.post(this.baseUrl + 'login', values, {params}).pipe(
-      tap(() => this.signalrService.createHubConnection()),
-      switchMap(() => this.getUserInfo())
-    )
+  login(values: {email: string; password: string}) {
+    return this.http.post<LoginResult>(this.baseUrl + 'account/login', values);
+  }
+
+  verifyTwoFactor(payload: {email: string; code: string}) {
+    return this.http.post<LoginResult>(this.baseUrl + 'account/verify-2fa', payload);
+  }
+
+  completeLogin() {
+    this.signalrService.createHubConnection();
+    return this.getUserInfo();
   }
 
   register(values: any) {
-    return this.http.post(this.baseUrl + 'account/register', values);
+    return this.http.post<LoginResult>(this.baseUrl + 'account/register', values);
   }
 
   getUserInfo() {
@@ -74,4 +78,51 @@ export class AccountService {
   changePassword(payload: {currentPassword: string; newPassword: string}) {
     return this.http.post(this.baseUrl + 'account/change-password', payload);
   }
+
+  resendConfirmation(email: string) {
+    return this.http.post(this.baseUrl + 'account/resend-confirmation', {email});
+  }
+
+  confirmEmail(payload: {email: string; token: string}) {
+    return this.http.post(this.baseUrl + 'account/confirm-email', payload);
+  }
+
+  forgotPassword(email: string) {
+    return this.http.post(this.baseUrl + 'account/forgot-password', {email});
+  }
+
+  resetPassword(payload: {email: string; token: string; newPassword: string}) {
+    return this.http.post(this.baseUrl + 'account/password-reset', payload);
+  }
+
+  requestPasswordReset() {
+    return this.http.post(this.baseUrl + 'account/request-password-reset', {});
+  }
+
+  requestEmailChange(newEmail: string) {
+    return this.http.post(this.baseUrl + 'account/request-email-change', {newEmail});
+  }
+
+  confirmEmailChange(payload: {userId: string; newEmail: string; token: string}) {
+    return this.http.post(this.baseUrl + 'account/confirm-email-change', payload);
+  }
+
+  toggleTwoFactor(enabled: boolean) {
+    return this.http.post<{twoFactorEnabled: boolean}>(this.baseUrl + 'account/toggle-2fa?enabled=' + enabled, {});
+  }
+
+  requestAccountDeletion() {
+    return this.http.post(this.baseUrl + 'account/request-deletion', {});
+  }
+
+  requestDataExport() {
+    return this.http.post(this.baseUrl + 'account/request-data-export', {});
+  }
 }
+
+export type LoginResult = {
+  success: boolean;
+  requiresTwoFactor: boolean;
+  requiresEmailConfirmation: boolean;
+  message?: string;
+};
