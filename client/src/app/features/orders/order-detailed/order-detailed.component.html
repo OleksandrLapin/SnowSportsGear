@@ -27,12 +27,87 @@
                         <dt class="font-medium">Order status</dt>
                         <dd class="mt-1 font-light">{{order.status}}</dd>
                     </dl>
+                    @if (order.cancelledReason) {
+                        <dl>
+                            <dt class="font-medium">Cancellation reason</dt>
+                            <dd class="mt-1 font-light">{{order.cancelledReason}}</dd>
+                        </dl>
+                    }
+                    @if (order.trackingNumber) {
+                        <dl>
+                            <dt class="font-medium">Tracking</dt>
+                            <dd class="mt-1 font-light">
+                                <span>{{order.trackingNumber}}</span>
+                                @if (order.trackingUrl) {
+                                    <a class="ml-2 text-primary hover:underline" [href]="order.trackingUrl" target="_blank" rel="noopener">Track</a>
+                                }
+                            </dd>
+                        </dl>
+                    }
+                    @if (order.deliveryUpdateDetails) {
+                        <dl>
+                            <dt class="font-medium">Delivery update</dt>
+                            <dd class="mt-1 font-light">{{order.deliveryUpdateDetails}}</dd>
+                        </dl>
+                    }
                     <dl>
                         <dt class="font-medium">Order date</dt>
                         <dd class="mt-1 font-light">{{order.orderDate | date: 'medium'}}</dd>
                     </dl>
                 </div>
             </div>
+
+            @if (isAdmin) {
+                <div class="mt-6 border-t border-gray-200 pt-6">
+                    <h4 class="text-lg font-semibold mb-4">Order management</h4>
+                    <form [formGroup]="statusForm" class="grid grid-cols-1 md:grid-cols-2 gap-4" (ngSubmit)="updateStatus()">
+                        <mat-form-field appearance="outline" class="w-full">
+                            <mat-label>Status</mat-label>
+                            <mat-select formControlName="status">
+                                @for (status of adminStatusOptions; track status) {
+                                    <mat-option [value]="status">{{status}}</mat-option>
+                                }
+                            </mat-select>
+                        </mat-form-field>
+                        @if (statusForm.get('status')?.value === 'Shipped') {
+                            <mat-form-field appearance="outline" class="w-full">
+                                <mat-label>Tracking number</mat-label>
+                                <input matInput formControlName="trackingNumber">
+                            </mat-form-field>
+                            <mat-form-field appearance="outline" class="w-full">
+                                <mat-label>Tracking URL</mat-label>
+                                <input matInput formControlName="trackingUrl">
+                            </mat-form-field>
+                        }
+                        @if (statusForm.get('status')?.value === 'Cancelled') {
+                            <mat-form-field appearance="outline" class="w-full md:col-span-2">
+                                <mat-label>Cancel reason</mat-label>
+                                <textarea matInput formControlName="cancelReason" rows="2"></textarea>
+                            </mat-form-field>
+                        }
+                        <mat-form-field appearance="outline" class="w-full md:col-span-2">
+                            <mat-label>Delivery update details</mat-label>
+                            <textarea matInput formControlName="deliveryDetails" rows="2"></textarea>
+                        </mat-form-field>
+                        <div class="md:col-span-2 flex justify-end">
+                            <button mat-flat-button color="primary" type="submit">Update status</button>
+                        </div>
+                    </form>
+                </div>
+            } @else if (canCancelOrder) {
+                <div class="mt-6 border-t border-gray-200 pt-6">
+                    <h4 class="text-lg font-semibold mb-4">Cancel order</h4>
+                    <form [formGroup]="cancelForm" class="grid grid-cols-1 md:grid-cols-2 gap-4" (ngSubmit)="cancelOrder()">
+                        <mat-form-field appearance="outline" class="w-full md:col-span-2">
+                            <mat-label>Reason (optional)</mat-label>
+                            <textarea matInput formControlName="reason" rows="2"></textarea>
+                        </mat-form-field>
+                        <div class="md:col-span-2 flex justify-end">
+                            <button mat-stroked-button color="warn" type="submit">Cancel order</button>
+                        </div>
+                    </form>
+                </div>
+            }
 
             <div class="mt-4">
                 <div class="border-y border-gray-200">

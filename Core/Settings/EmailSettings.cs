@@ -9,4 +9,5 @@ public class EmailSettings
     public bool UseSsl { get; set; } = true;
     public string FromEmail { get; set; } = string.Empty;
     public string FromName { get; set; } = "SnowSports Gear";
+    public string PickupDirectory { get; set; } = string.Empty;
 }

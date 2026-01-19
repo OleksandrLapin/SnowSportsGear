@@ -58,7 +58,21 @@ public class PaymentsController(IPaymentService paymentService,
                 return BadRequest("Invalid event data");
             }
 
-            await HandlePaymentIntentSucceeded(intent);
+            switch (stripeEvent.Type)
+            {
+                case Events.PaymentIntentSucceeded:
+                    await HandlePaymentIntentSucceeded(intent);
+                    break;
+                case Events.PaymentIntentProcessing:
+                    await HandlePaymentIntentProcessing(intent);
+                    break;
+                case Events.PaymentIntentPaymentFailed:
+                    await HandlePaymentIntentFailed(intent);
+                    break;
+                case Events.PaymentIntentCanceled:
+                    await HandlePaymentIntentFailed(intent);
+                    break;
+            }
 
             return Ok();
         }
@@ -94,6 +108,7 @@ public class PaymentsController(IPaymentService paymentService,
             {
                 order.Status = OrderStatus.PaymentReceived;
             }
+            order.StatusUpdatedAt = DateTime.UtcNow;
 
             await unit.Complete();
 
@@ -121,6 +136,54 @@ public class PaymentsController(IPaymentService paymentService,
             logger.LogError(ex, "Failed to construct stripe event");
             throw new StripeException("Invalid signature");
         }
+    }
+
+    private async Task HandlePaymentIntentProcessing(PaymentIntent intent)
+    {
+        if (intent.Status != "processing") return;
+
+        var spec = new OrderSpecification(intent.Id, true);
+        var order = await unit.Repository<Order>().GetEntityWithSpec(spec);
+        if (order == null) return;
+
+        if (order.Status != OrderStatus.Pending) return;
+
+        var tokens = NotificationTokenBuilder.BuildOrderTokens(order, notificationOptions.Value);
+
+        await notificationService.SendAsync(new Core.Models.Notifications.NotificationRequest(
+            NotificationTemplateKeys.OrderPaymentPending,
+            order.BuyerEmail,
+            tokens));
+    }
+
+    private async Task HandlePaymentIntentFailed(PaymentIntent intent)
+    {
+        if (intent.Status != "requires_payment_method" && intent.Status != "canceled") return;
+
+        var spec = new OrderSpecification(intent.Id, true);
+        var order = await unit.Repository<Order>().GetEntityWithSpec(spec);
+        if (order == null) return;
+
+        if (order.Status is OrderStatus.Cancelled or OrderStatus.Refunded) return;
+
+        order.Status = OrderStatus.PaymentFailed;
+        order.StatusUpdatedAt = DateTime.UtcNow;
+        await unit.Complete();
+
+        var tokens = NotificationTokenBuilder.BuildOrderTokens(order, notificationOptions.Value);
+        tokens["ErrorMessage"] = intent.LastPaymentError?.Message ?? "Payment failed";
+
+        var templateKey = intent.Status == "canceled"
+            ? NotificationTemplateKeys.OrderPaymentDeclined
+            : NotificationTemplateKeys.OrderPaymentRetry;
+
+        await notificationService.SendAsync(new Core.Models.Notifications.NotificationRequest(
+            templateKey,
+            order.BuyerEmail,
+            tokens));
+
+        var adminRequests = await BuildAdminRequestsAsync(userManager, NotificationTemplateKeys.AdminPaymentFailed, tokens);
+        await notificationService.SendBulkAsync(adminRequests);
     }
 
     private static async Task SendPaymentNotificationsAsync(

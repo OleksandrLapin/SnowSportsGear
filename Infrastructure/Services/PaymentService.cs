@@ -76,12 +76,34 @@ public class PaymentService : IPaymentService
         }
         else
         {
-            var options = new PaymentIntentUpdateOptions
+            var intent = await service.GetAsync(cart.PaymentIntentId);
+            if (CanUpdateAmount(intent.Status))
             {
-                Amount = total
-            };
-            await service.UpdateAsync(cart.PaymentIntentId, options);
+                var options = new PaymentIntentUpdateOptions
+                {
+                    Amount = total
+                };
+                intent = await service.UpdateAsync(cart.PaymentIntentId, options);
+                cart.ClientSecret = intent.ClientSecret;
+            }
+            else
+            {
+                var options = new PaymentIntentCreateOptions
+                {
+                    Amount = total,
+                    Currency = "usd",
+                    PaymentMethodTypes = ["card"]
+                };
+                intent = await service.CreateAsync(options);
+                cart.PaymentIntentId = intent.Id;
+                cart.ClientSecret = intent.ClientSecret;
+            }
         }
+    }
+
+    private static bool CanUpdateAmount(string? status)
+    {
+        return status is "requires_payment_method" or "requires_confirmation" or "requires_action";
     }
 
     private async Task<long> ApplyDiscountAsync(AppCoupon appCoupon, long amount)

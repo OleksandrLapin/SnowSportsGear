@@ -17,4 +17,10 @@ public class OrderDto
     public required string Status { get; set; }
     public decimal Total { get; set; }
     public required string PaymentIntentId { get; set; }
+    public DateTime? StatusUpdatedAt { get; set; }
+    public string? TrackingNumber { get; set; }
+    public string? TrackingUrl { get; set; }
+    public string? CancelledBy { get; set; }
+    public string? CancelledReason { get; set; }
+    public string? DeliveryUpdateDetails { get; set; }
 }

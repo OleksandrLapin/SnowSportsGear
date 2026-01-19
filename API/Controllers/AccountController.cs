@@ -19,6 +19,7 @@ public class AccountController(
     SignInManager<AppUser> signInManager,
     UserManager<AppUser> userManager,
     INotificationService notificationService,
+    ISecurityCodeService securityCodeService,
     IOptions<NotificationSettings> notificationOptions) : BaseApiController
 {
     private readonly NotificationSettings notificationSettings = notificationOptions.Value;
@@ -195,7 +196,7 @@ public class AccountController(
 
         var result = await signInManager.UserManager.UpdateAsync(user);
 
-        if (!result.Succeeded) return BadRequest("Problem updating user address");
+        if (!result.Succeeded) return BadRequest(new { message = "Problem updating user address" });
 
         return Ok(user.Address.ToDto());
     }
@@ -204,44 +205,50 @@ public class AccountController(
     public async Task<ActionResult> ConfirmEmail([FromBody] ConfirmEmailDto dto)
     {
         var user = await userManager.FindByEmailAsync(dto.Email);
-        if (user == null) return BadRequest("Invalid email");
+        if (user == null) return BadRequest(new { message = "Invalid email" });
 
-        var token = DecodeToken(dto.Token);
-        var result = await userManager.ConfirmEmailAsync(user, token);
-        if (!result.Succeeded) return BadRequest("Invalid confirmation code");
+        var token = await ResolveTokenAsync(user, SecurityCodePurpose.EmailConfirmation, dto.Token, user.Email);
+        if (string.IsNullOrWhiteSpace(token)) return BadRequest(new { message = "Invalid confirmation code" });
+        if (!user.EmailConfirmed)
+        {
+            var result = await userManager.ConfirmEmailAsync(user, token);
+            if (!result.Succeeded) return BadRequest(new { message = "Invalid confirmation code" });
+        }
 
-        return Ok("Email confirmed");
+        await signInManager.SignInAsync(user, isPersistent: true);
+        return Ok(new LoginResultDto { Success = true, Message = "Email confirmed" });
     }
 
     [HttpPost("resend-confirmation")]
     public async Task<ActionResult> ResendConfirmation([FromBody] ForgotPasswordDto dto)
     {
         var user = await userManager.FindByEmailAsync(dto.Email);
-        if (user == null) return BadRequest("Email not found");
+        if (user == null) return BadRequest(new { message = "Email not found" });
 
         var sent = await SendEmailConfirmationAsync(user);
-        if (!sent) return StatusCode(StatusCodes.Status500InternalServerError, EmailServiceUnavailableMessage);
-        return Ok("Confirmation sent");
+        if (!sent) return StatusCode(StatusCodes.Status500InternalServerError, new { message = EmailServiceUnavailableMessage });
+        return Ok(new { message = "Confirmation sent" });
     }
 
     [HttpPost("forgot-password")]
     public async Task<ActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {
         var user = await userManager.FindByEmailAsync(dto.Email);
-        if (user == null) return BadRequest("Email not found");
+        if (user == null) return BadRequest(new { message = "Email not found" });
 
         var sent = await SendPasswordResetAsync(user);
-        if (!sent) return StatusCode(StatusCodes.Status500InternalServerError, EmailServiceUnavailableMessage);
-        return Ok("Password reset email sent");
+        if (!sent) return StatusCode(StatusCodes.Status500InternalServerError, new { message = EmailServiceUnavailableMessage });
+        return Ok(new { message = "Password reset email sent" });
     }
 
     [HttpPost("password-reset")]
     public async Task<ActionResult> PasswordReset([FromBody] ResetPasswordDto dto)
     {
         var user = await userManager.FindByEmailAsync(dto.Email);
-        if (user == null) return BadRequest("Email not found");
+        if (user == null) return BadRequest(new { message = "Email not found" });
 
-        var token = DecodeToken(dto.Token);
+        var token = await ResolveTokenAsync(user, SecurityCodePurpose.PasswordReset, dto.Token, user.Email);
+        if (string.IsNullOrWhiteSpace(token)) return BadRequest(new { message = "Invalid reset code" });
         var result = await userManager.ResetPasswordAsync(user, token, dto.NewPassword);
         if (!result.Succeeded)
         {
@@ -253,7 +260,7 @@ public class AccountController(
         }
 
         await SendPasswordChangedAsync(user);
-        return Ok("Password updated");
+        return Ok(new { message = "Password updated" });
     }
 
     [Authorize]
@@ -262,8 +269,8 @@ public class AccountController(
     {
         var user = await userManager.GetUserByEmail(User);
         var sent = await SendPasswordResetAsync(user);
-        if (!sent) return StatusCode(StatusCodes.Status500InternalServerError, EmailServiceUnavailableMessage);
-        return Ok("Password reset email sent");
+        if (!sent) return StatusCode(StatusCodes.Status500InternalServerError, new { message = EmailServiceUnavailableMessage });
+        return Ok(new { message = "Password reset email sent" });
     }
 
     [Authorize]
@@ -273,15 +280,20 @@ public class AccountController(
         var user = await userManager.GetUserByEmail(User);
         if (string.Equals(user.Email, dto.NewEmail, StringComparison.OrdinalIgnoreCase))
         {
-            return BadRequest("New email must be different");
+            return BadRequest(new { message = "New email must be different" });
         }
 
         var token = await userManager.GenerateChangeEmailTokenAsync(user, dto.NewEmail);
-        var encoded = EncodeToken(token);
-        var confirmUrl = BuildAppUrl($"/account/confirm-email-change?userId={Uri.EscapeDataString(user.Id)}&newEmail={Uri.EscapeDataString(dto.NewEmail)}&token={Uri.EscapeDataString(encoded)}");
+        var code = await securityCodeService.CreateAsync(
+            user.Id,
+            SecurityCodePurpose.EmailChange,
+            token,
+            dto.NewEmail,
+            TimeSpan.FromMinutes(notificationSettings.SecurityCodeExpiryMinutes));
+        var confirmUrl = BuildAppUrl($"/account/confirm-email-change?userId={Uri.EscapeDataString(user.Id)}&newEmail={Uri.EscapeDataString(dto.NewEmail)}&token={Uri.EscapeDataString(code)}");
 
         var tokens = BuildBaseTokens(user);
-        tokens["Code"] = encoded;
+        tokens["Code"] = code;
         tokens["CodeExpiry"] = $"{notificationSettings.SecurityCodeExpiryMinutes} minutes";
         tokens["ConfirmUrl"] = confirmUrl;
 
@@ -291,17 +303,18 @@ public class AccountController(
             tokens,
             user.Id));
 
-        if (!sent) return StatusCode(StatusCodes.Status500InternalServerError, EmailServiceUnavailableMessage);
-        return Ok("Email change confirmation sent");
+        if (!sent) return StatusCode(StatusCodes.Status500InternalServerError, new { message = EmailServiceUnavailableMessage });
+        return Ok(new { message = "Email change confirmation sent" });
     }
 
     [HttpPost("confirm-email-change")]
     public async Task<ActionResult> ConfirmEmailChange([FromBody] ConfirmEmailChangeDto dto)
     {
         var user = await userManager.FindByIdAsync(dto.UserId);
-        if (user == null) return BadRequest("Invalid user");
+        if (user == null) return BadRequest(new { message = "Invalid user" });
 
-        var token = DecodeToken(dto.Token);
+        var token = await ResolveTokenAsync(user, SecurityCodePurpose.EmailChange, dto.Token, dto.NewEmail);
+        if (string.IsNullOrWhiteSpace(token)) return BadRequest(new { message = "Invalid confirmation code" });
         var result = await userManager.ChangeEmailAsync(user, dto.NewEmail, token);
         if (!result.Succeeded)
         {
@@ -316,7 +329,7 @@ public class AccountController(
         user.EmailConfirmed = true;
         await userManager.UpdateAsync(user);
 
-        return Ok("Email updated");
+        return Ok(new { message = "Email updated" });
     }
 
     [Authorize]
@@ -339,7 +352,7 @@ public class AccountController(
             ["AdminDashboardUrl"] = BuildAppUrl("/admin")
         });
 
-        return Ok("Deletion request received");
+        return Ok(new { message = "Deletion request received" });
     }
 
     [Authorize]
@@ -361,7 +374,7 @@ public class AccountController(
             ["AdminDashboardUrl"] = BuildAppUrl("/admin")
         });
 
-        return Ok("Data export request received");
+        return Ok(new { message = "Data export request received" });
     }
 
     [Authorize]
@@ -371,7 +384,7 @@ public class AccountController(
         var user = await userManager.GetUserByEmail(User);
         user.TwoFactorEnabled = enabled;
         var result = await userManager.UpdateAsync(user);
-        if (!result.Succeeded) return BadRequest("Unable to update two-factor settings");
+        if (!result.Succeeded) return BadRequest(new { message = "Unable to update two-factor settings" });
         return Ok(new { TwoFactorEnabled = enabled });
     }
 
@@ -418,7 +431,7 @@ public class AccountController(
         if (result.Succeeded)
         {
             await SendPasswordChangedAsync(user);
-            return Ok("Password updated");
+            return Ok(new { message = "Password updated" });
         }
 
         foreach (var error in result.Errors)
@@ -432,11 +445,16 @@ public class AccountController(
     private async Task<bool> SendEmailConfirmationAsync(AppUser user)
     {
         var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
-        var encoded = EncodeToken(token);
-        var confirmUrl = BuildAppUrl($"/account/confirm-email?email={Uri.EscapeDataString(user.Email ?? string.Empty)}&token={Uri.EscapeDataString(encoded)}");
+        var code = await securityCodeService.CreateAsync(
+            user.Id,
+            SecurityCodePurpose.EmailConfirmation,
+            token,
+            user.Email,
+            TimeSpan.FromMinutes(notificationSettings.SecurityCodeExpiryMinutes));
+        var confirmUrl = BuildAppUrl($"/account/confirm-email?email={Uri.EscapeDataString(user.Email ?? string.Empty)}&token={Uri.EscapeDataString(code)}");
 
         var tokens = BuildBaseTokens(user);
-        tokens["Code"] = encoded;
+        tokens["Code"] = code;
         tokens["CodeExpiry"] = $"{notificationSettings.SecurityCodeExpiryMinutes} minutes";
         tokens["ConfirmUrl"] = confirmUrl;
 
@@ -460,11 +478,16 @@ public class AccountController(
     private async Task<bool> SendPasswordResetAsync(AppUser user)
     {
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
-        var encoded = EncodeToken(token);
-        var resetUrl = BuildAppUrl($"/account/reset-password?email={Uri.EscapeDataString(user.Email ?? string.Empty)}&token={Uri.EscapeDataString(encoded)}");
+        var code = await securityCodeService.CreateAsync(
+            user.Id,
+            SecurityCodePurpose.PasswordReset,
+            token,
+            user.Email,
+            TimeSpan.FromMinutes(notificationSettings.SecurityCodeExpiryMinutes));
+        var resetUrl = BuildAppUrl($"/account/reset-password?email={Uri.EscapeDataString(user.Email ?? string.Empty)}&token={Uri.EscapeDataString(code)}");
 
         var tokens = BuildBaseTokens(user);
-        tokens["Code"] = encoded;
+        tokens["Code"] = code;
         tokens["CodeExpiry"] = $"{notificationSettings.SecurityCodeExpiryMinutes} minutes";
         tokens["ResetUrl"] = resetUrl;
 
@@ -540,6 +563,35 @@ public class AccountController(
         {
             await notificationService.SendBulkAsync(requests);
         }
+    }
+
+    private async Task<string?> ResolveTokenAsync(AppUser user, string purpose, string tokenOrCode, string? targetEmail)
+    {
+        if (string.IsNullOrWhiteSpace(tokenOrCode)) return null;
+
+        if (IsShortCode(tokenOrCode))
+        {
+            return await securityCodeService.RedeemTokenAsync(user.Id, purpose, tokenOrCode, targetEmail);
+        }
+
+        try
+        {
+            return DecodeToken(tokenOrCode);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool IsShortCode(string value)
+    {
+        if (value.Length != 6) return false;
+        foreach (var ch in value)
+        {
+            if (ch < '0' || ch > '9') return false;
+        }
+        return true;
     }
 
     private Dictionary<string, string> BuildBaseTokens(AppUser user)

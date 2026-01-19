@@ -32,6 +32,16 @@ export class AdminService {
     return this.http.post<OrderSummary>(this.baseUrl + 'admin/orders/refund/' + id, {});
   }
 
+  updateOrderStatus(id: number, payload: {
+    status: string;
+    cancelReason?: string;
+    trackingNumber?: string;
+    trackingUrl?: string;
+    deliveryDetails?: string;
+  }) {
+    return this.http.put<OrderSummary>(this.baseUrl + 'admin/orders/' + id + '/status', payload);
+  }
+
   getProducts(pageIndex: number, pageSize: number) {
     const params = new HttpParams()
       .append('pageIndex', pageIndex)

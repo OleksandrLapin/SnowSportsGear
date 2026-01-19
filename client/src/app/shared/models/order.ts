@@ -12,6 +12,12 @@ export interface Order {
     status: string
     total: number
     paymentIntentId: string
+    statusUpdatedAt?: string | null
+    trackingNumber?: string | null
+    trackingUrl?: string | null
+    cancelledBy?: string | null
+    cancelledReason?: string | null
+    deliveryUpdateDetails?: string | null
   }
   
   export interface ShippingAddress {

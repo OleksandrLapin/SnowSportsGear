@@ -65,7 +65,19 @@ export class AdminComponent implements OnInit {
   private dialog = inject(MatDialog);
   orderParams = new OrderParams();
   totalItems = 0;
-  statusOptions = ['All', 'PaymentReceived', 'PaymentMismatch', 'Refunded', 'Pending'];
+  statusOptions = [
+    'All',
+    'Pending',
+    'PaymentReceived',
+    'PaymentFailed',
+    'PaymentMismatch',
+    'Processing',
+    'Packed',
+    'Shipped',
+    'Delivered',
+    'Cancelled',
+    'Refunded'
+  ];
   productColumns = ['name', 'price', 'brand', 'type', 'color', 'quantityInStock', 'actions'];
   productDataSource = new MatTableDataSource<Product>([]);
   productPageIndex = 1;

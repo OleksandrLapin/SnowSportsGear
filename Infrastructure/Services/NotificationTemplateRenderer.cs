@@ -65,17 +65,29 @@ public class NotificationTemplateRenderer : INotificationTemplateRenderer
 
     private string BuildHtml(string subject, string headline, string body, string ctaLabel, string ctaUrl, string footer)
     {
+        var brand = "#7d00fa";
+        var background = "#f6f0ff";
+        var cardBorder = "#e9d7ff";
+        var headingColor = "#1f2937";
+        var contentColor = "#374151";
+        var muted = "#6b7280";
+        var codeStyle = "display:inline-block; margin:12px 0; padding:10px 14px; font-family:'Courier New', monospace; font-size:18px; letter-spacing:2px; color:#4c1d95; background:#f3e8ff; border:1px dashed #c4b5fd; border-radius:10px;";
+
+        var normalizedBody = body
+            .Replace("<span class=\"code\">", $"<span style=\"{codeStyle}\">", StringComparison.OrdinalIgnoreCase)
+            .Replace("<span class='code'>", $"<span style=\"{codeStyle}\">", StringComparison.OrdinalIgnoreCase);
+
         var ctaBlock = string.IsNullOrWhiteSpace(ctaUrl) || string.IsNullOrWhiteSpace(ctaLabel)
             ? string.Empty
-            : $"<div class=\"cta\"><a href=\"{ctaUrl}\" class=\"button\">{ctaLabel}</a></div>";
+            : $"<div style=\"margin:24px 0;\"><a href=\"{ctaUrl}\" style=\"display:inline-block; padding:12px 24px; background:{brand}; color:#ffffff; text-decoration:none; border-radius:999px; font-weight:600;\">{ctaLabel}</a></div>";
 
         var logoBlock = string.IsNullOrWhiteSpace(settings.LogoUrl)
-            ? $"<div class=\"logo\">{settings.StoreName}</div>"
-            : $"<img src=\"{settings.LogoUrl}\" alt=\"{settings.StoreName}\" class=\"logo-image\" />";
+            ? $"<div style=\"font-size:20px; font-weight:700; color:{brand}; margin:0 0 20px 0;\">{settings.StoreName}</div>"
+            : $"<img src=\"{settings.LogoUrl}\" alt=\"{settings.StoreName}\" style=\"display:block; max-height:36px; margin:0 0 20px 0;\" />";
 
         var footerBlock = string.IsNullOrWhiteSpace(footer)
             ? string.Empty
-            : $"<p class=\"footer-text\">{footer}</p>";
+            : $"<div style=\"margin-bottom:8px;\">{footer}</div>";
 
         var builder = new StringBuilder();
         builder.AppendLine("<!doctype html>");
@@ -84,42 +96,39 @@ public class NotificationTemplateRenderer : INotificationTemplateRenderer
         builder.AppendLine("  <meta charset=\"utf-8\">");
         builder.AppendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
         builder.AppendLine($"  <title>{subject}</title>");
-        builder.AppendLine("  <style>");
-        builder.AppendLine("    body { margin:0; padding:0; background:#f4f4f7; font-family: \"Segoe UI\", Arial, sans-serif; color:#111827; }");
-        builder.AppendLine("    .wrapper { width:100%; background:#f4f4f7; padding:32px 16px; }");
-        builder.AppendLine("    .card { max-width:640px; margin:0 auto; background:#ffffff; border-radius:14px; border:1px solid #e5e7eb; padding:32px; }");
-        builder.AppendLine("    .logo { font-size:20px; font-weight:700; color:#0f172a; margin-bottom:24px; }");
-        builder.AppendLine("    .logo-image { max-height:36px; margin-bottom:24px; }");
-        builder.AppendLine("    h1 { font-size:22px; margin:0 0 12px 0; color:#0f172a; }");
-        builder.AppendLine("    .content { font-size:15px; line-height:1.6; color:#374151; }");
-        builder.AppendLine("    .cta { margin:24px 0; }");
-        builder.AppendLine("    .button { display:inline-block; padding:12px 22px; background:#0f766e; color:#ffffff; text-decoration:none; border-radius:999px; font-weight:600; }");
-        builder.AppendLine("    .footer { margin-top:24px; font-size:12px; color:#6b7280; }");
-        builder.AppendLine("    .footer-text { margin:4px 0; }");
-        builder.AppendLine("    .preheader { display:none; max-height:0; overflow:hidden; }");
-        builder.AppendLine("  </style>");
         builder.AppendLine("</head>");
-        builder.AppendLine("<body>");
-        builder.AppendLine($"  <span class=\"preheader\">{subject}</span>");
-        builder.AppendLine("  <div class=\"wrapper\">");
-        builder.AppendLine("    <div class=\"card\">");
-        builder.AppendLine($"      {logoBlock}");
-        builder.AppendLine($"      <h1>{headline}</h1>");
-        builder.AppendLine($"      <div class=\"content\">{body}</div>");
+        builder.AppendLine($"<body style=\"margin:0; padding:0; background:{background}; font-family:'Segoe UI', Arial, sans-serif; color:#111827;\">");
+        builder.AppendLine($"  <span style=\"display:none; max-height:0; overflow:hidden;\">{subject}</span>");
+        builder.AppendLine($"  <table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:{background}; padding:32px 16px;\">");
+        builder.AppendLine("    <tr>");
+        builder.AppendLine("      <td align=\"center\">");
+        builder.AppendLine($"        <table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%; max-width:600px; background:#ffffff; border:1px solid {cardBorder}; border-radius:18px; overflow:hidden;\">");
+        builder.AppendLine("          <tr>");
+        builder.AppendLine($"            <td style=\"height:4px; background:{brand};\"></td>");
+        builder.AppendLine("          </tr>");
+        builder.AppendLine("          <tr>");
+        builder.AppendLine($"            <td style=\"padding:32px;\">");
+        builder.AppendLine($"              {logoBlock}");
+        builder.AppendLine($"              <h1 style=\"font-size:22px; margin:0 0 12px 0; color:{headingColor};\">{headline}</h1>");
+        builder.AppendLine($"              <div style=\"font-size:15px; line-height:1.6; color:{contentColor};\">{normalizedBody}</div>");
         if (!string.IsNullOrWhiteSpace(ctaBlock))
         {
-            builder.AppendLine($"      {ctaBlock}");
+            builder.AppendLine($"              {ctaBlock}");
         }
-        builder.AppendLine("      <div class=\"footer\">");
+        builder.AppendLine($"              <div style=\"margin-top:24px; font-size:12px; color:{muted};\">");
         if (!string.IsNullOrWhiteSpace(footerBlock))
         {
-            builder.AppendLine($"        {footerBlock}");
+            builder.AppendLine($"                {footerBlock}");
         }
-        builder.AppendLine($"        <p class=\"footer-text\">{settings.StoreName} - {settings.StoreUrl}</p>");
-        builder.AppendLine($"        <p class=\"footer-text\">Support: {settings.SupportEmail}</p>");
-        builder.AppendLine("      </div>");
-        builder.AppendLine("    </div>");
-        builder.AppendLine("  </div>");
+        builder.AppendLine($"                <div>{settings.StoreName} - {settings.StoreUrl}</div>");
+        builder.AppendLine($"                <div>Support: {settings.SupportEmail}</div>");
+        builder.AppendLine("              </div>");
+        builder.AppendLine("            </td>");
+        builder.AppendLine("          </tr>");
+        builder.AppendLine("        </table>");
+        builder.AppendLine("      </td>");
+        builder.AppendLine("    </tr>");
+        builder.AppendLine("  </table>");
         builder.AppendLine("</body>");
         builder.AppendLine("</html>");
 
@@ -151,6 +160,17 @@ public class NotificationTemplateRenderer : INotificationTemplateRenderer
     private static string StripHtml(string input)
     {
         if (string.IsNullOrWhiteSpace(input)) return string.Empty;
-        return Regex.Replace(input, "<.*?>", string.Empty);
+        var output = Regex.Replace(input, "<br\\s*/?>", "\n", RegexOptions.IgnoreCase);
+        output = Regex.Replace(output, "</p>", "\n\n", RegexOptions.IgnoreCase);
+        output = Regex.Replace(output, "</tr>", "\n", RegexOptions.IgnoreCase);
+        output = Regex.Replace(output, "</t[dh]>", " | ", RegexOptions.IgnoreCase);
+        output = Regex.Replace(output, "<li[^>]*>", "- ", RegexOptions.IgnoreCase);
+        output = Regex.Replace(output, "</li>", "\n", RegexOptions.IgnoreCase);
+        output = Regex.Replace(output, "</table>", "\n", RegexOptions.IgnoreCase);
+        output = Regex.Replace(output, "<.*?>", string.Empty);
+        output = Regex.Replace(output, "\\s+\\|\\s+\\n", "\n");
+        output = Regex.Replace(output, "\\s*\\|\\s*$", string.Empty);
+        output = Regex.Replace(output, "\\n{3,}", "\n\n");
+        return output.Trim();
     }
 }

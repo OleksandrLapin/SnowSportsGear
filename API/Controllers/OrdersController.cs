@@ -85,7 +85,8 @@ public class OrdersController(
             PaymentSummary = orderDto.PaymentSummary,
             PaymentIntentId = cart.PaymentIntentId,
             BuyerEmail = email,
-            Status = OrderStatus.PaymentReceived
+            Status = OrderStatus.PaymentReceived,
+            StatusUpdatedAt = DateTime.UtcNow
         };
 
         var lowStockRequests = new List<Core.Models.Notifications.NotificationRequest>();
@@ -187,6 +188,42 @@ public class OrdersController(
         return order.ToDto(reviewLookup);
     }
 
+    [HttpPost("{id:int}/cancel")]
+    public async Task<ActionResult<OrderDto>> CancelOrder(int id, [FromBody] CancelOrderDto dto)
+    {
+        var spec = new OrderSpecification(User.GetEmail(), id);
+        var order = await unit.Repository<Order>().GetEntityWithSpec(spec);
+
+        if (order == null) return NotFound("Order not found");
+        if (!CanCancel(order.Status)) return BadRequest("Order can no longer be cancelled");
+
+        order.Status = OrderStatus.Cancelled;
+        order.StatusUpdatedAt = DateTime.UtcNow;
+        order.CancelledBy = "Customer";
+        order.CancelledReason = string.IsNullOrWhiteSpace(dto.Reason)
+            ? "Customer requested cancellation"
+            : dto.Reason.Trim();
+
+        if (!await unit.Complete())
+        {
+            return BadRequest("Problem cancelling order");
+        }
+
+        var tokens = NotificationTokenBuilder.BuildOrderTokens(order, notificationOptions.Value);
+        tokens["CancelledBy"] = order.CancelledBy;
+        tokens["CancelReason"] = order.CancelledReason ?? "Customer requested cancellation";
+
+        await notificationService.SendAsync(new Core.Models.Notifications.NotificationRequest(
+            NotificationTemplateKeys.OrderCancelled,
+            order.BuyerEmail,
+            tokens));
+
+        var adminRequests = await BuildAdminRequestsAsync(userManager, NotificationTemplateKeys.AdminOrderCancelled, tokens);
+        await notificationService.SendBulkAsync(adminRequests);
+
+        return Ok(order.ToDto());
+    }
+
     private static async Task<List<Core.Models.Notifications.NotificationRequest>> BuildAdminRequestsAsync(
         UserManager<AppUser> userManager,
         string templateKey,
@@ -201,5 +238,10 @@ public class OrdersController(
                 tokens,
                 a.Id))
             .ToList();
+    }
+
+    private static bool CanCancel(OrderStatus status)
+    {
+        return status is not (OrderStatus.Cancelled or OrderStatus.Shipped or OrderStatus.Delivered or OrderStatus.Refunded);
     }
 }

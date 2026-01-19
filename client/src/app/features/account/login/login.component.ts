@@ -7,6 +7,7 @@ import { MatInput } from '@angular/material/input';
 import { AccountService } from '../../../core/services/account.service';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SnackbarService } from '../../../core/services/snackbar.service';
+import { getErrorMessage } from '../../../core/utils/http-error';
 
 @Component({
   selector: 'app-login',
@@ -77,7 +78,7 @@ export class LoginComponent {
           this.router.navigate(['/account/confirm-email'], {queryParams: {email: payload.email}});
           return;
         }
-        this.snack.error(this.getErrorMessage(err, 'Login failed'));
+        this.snack.error(getErrorMessage(err, 'Login failed'));
       }
     });
   }
@@ -101,7 +102,7 @@ export class LoginComponent {
         });
       },
       error: err => {
-        this.snack.error(err?.error?.message || 'Invalid code');
+        this.snack.error(getErrorMessage(err, 'Invalid code'));
       }
     });
   }
@@ -110,7 +111,7 @@ export class LoginComponent {
     if (!this.pendingEmail) return;
     this.accountService.resendConfirmation(this.pendingEmail).subscribe({
       next: () => this.snack.success('Confirmation email resent'),
-      error: err => this.snack.error(this.getErrorMessage(err, 'Unable to resend confirmation'))
+      error: err => this.snack.error(getErrorMessage(err, 'Unable to resend confirmation'))
     });
   }
 
@@ -118,12 +119,4 @@ export class LoginComponent {
     this.step = 'login';
   }
 
-  private getErrorMessage(err: any, fallback: string) {
-    if (!err) return fallback;
-    if (typeof err === 'string') return err;
-    if (typeof err.error === 'string') return err.error;
-    if (typeof err.error?.message === 'string') return err.error.message;
-    if (typeof err.message === 'string') return err.message;
-    return fallback;
-  }
 }

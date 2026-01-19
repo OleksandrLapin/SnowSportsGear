@@ -4,9 +4,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AccountService } from '../../../core/services/account.service';
 import { SnackbarService } from '../../../core/services/snackbar.service';
+import { getErrorMessage } from '../../../core/utils/http-error';
+import { switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-confirm-email',
@@ -24,6 +26,7 @@ import { SnackbarService } from '../../../core/services/snackbar.service';
 export class ConfirmEmailComponent implements OnInit {
   private fb = inject(FormBuilder);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private accountService = inject(AccountService);
   private snack = inject(SnackbarService);
   emailLocked = false;
@@ -52,12 +55,15 @@ export class ConfirmEmailComponent implements OnInit {
     }
 
     const payload = this.form.value as {email: string; token: string};
-    this.accountService.confirmEmail(payload).subscribe({
+    this.accountService.confirmEmail(payload).pipe(
+      switchMap(() => this.accountService.completeLogin())
+    ).subscribe({
       next: () => {
-        this.snack.success('Email confirmed. You can now login.');
+        this.snack.success('Email confirmed. You are now logged in.');
+        this.router.navigateByUrl('/shop');
       },
       error: err => {
-        this.snack.error(this.getErrorMessage(err, 'Unable to confirm email'));
+        this.snack.error(getErrorMessage(err, 'Unable to confirm email'));
       }
     });
   }
@@ -70,16 +76,7 @@ export class ConfirmEmailComponent implements OnInit {
     }
     this.accountService.resendConfirmation(email).subscribe({
       next: () => this.snack.success('Confirmation email resent'),
-      error: err => this.snack.error(this.getErrorMessage(err, 'Unable to resend confirmation'))
+      error: err => this.snack.error(getErrorMessage(err, 'Unable to resend confirmation'))
     });
-  }
-
-  private getErrorMessage(err: any, fallback: string) {
-    if (!err) return fallback;
-    if (typeof err === 'string') return err;
-    if (typeof err.error === 'string') return err.error;
-    if (typeof err.error?.message === 'string') return err.error.message;
-    if (typeof err.message === 'string') return err.message;
-    return fallback;
   }
 }

@@ -49,9 +49,12 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
         var product = await productsRepo.GetProductWithImageAsync(id);
         if (product == null) return NotFound();
 
-        if (product.PictureData != null && product.PictureContentType != null)
+        if (product.PictureData != null && product.PictureData.Length > 0)
         {
-            return File(product.PictureData, product.PictureContentType);
+            var contentType = string.IsNullOrWhiteSpace(product.PictureContentType)
+                ? "image/png"
+                : product.PictureContentType;
+            return File(product.PictureData, contentType);
         }
 
         if (!string.IsNullOrEmpty(product.PictureUrl))

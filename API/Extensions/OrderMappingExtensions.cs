@@ -9,8 +9,13 @@ public static class OrderMappingExtensions
 {
     public static OrderDto ToDto(this Order order, IDictionary<int, ProductReview>? userReviews = null)
     {
-        var allowReview = userReviews != null && 
-            order.Status is OrderStatus.PaymentReceived or OrderStatus.Refunded;
+        var allowReview = userReviews != null &&
+            order.Status is OrderStatus.PaymentReceived
+                or OrderStatus.Processing
+                or OrderStatus.Packed
+                or OrderStatus.Shipped
+                or OrderStatus.Delivered
+                or OrderStatus.Refunded;
 
         return new OrderDto
         {
@@ -26,7 +31,13 @@ public static class OrderMappingExtensions
             Discount = order.Discount,
             Total = order.GetTotal(),
             Status = order.Status.ToString(),
-            PaymentIntentId = order.PaymentIntentId
+            PaymentIntentId = order.PaymentIntentId,
+            StatusUpdatedAt = order.StatusUpdatedAt,
+            TrackingNumber = order.TrackingNumber,
+            TrackingUrl = order.TrackingUrl,
+            CancelledBy = order.CancelledBy,
+            CancelledReason = order.CancelledReason,
+            DeliveryUpdateDetails = order.DeliveryUpdateDetails
         };
     }
 

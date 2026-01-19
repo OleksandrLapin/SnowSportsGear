@@ -49,6 +49,102 @@ public class AdminController(
         return order.ToDto();
     }
 
+    [HttpPut("orders/{id:int}/status")]
+    public async Task<ActionResult<OrderSummaryDto>> UpdateOrderStatus(int id, [FromBody] UpdateOrderStatusDto dto)
+    {
+        var spec = new OrderSpecification(id);
+        var order = await unit.Repository<Order>().GetEntityWithSpec(spec);
+
+        if (order == null) return BadRequest("No order with that id");
+        if (!TryParseStatus(dto.Status, out var newStatus)) return BadRequest("Invalid status");
+        if (!CanUpdate(order.Status)) return BadRequest("Order can no longer be updated");
+
+        if (order.Status == newStatus)
+        {
+            return ToSummary(order);
+        }
+
+        order.Status = newStatus;
+        order.StatusUpdatedAt = DateTime.UtcNow;
+
+        if (!string.IsNullOrWhiteSpace(dto.TrackingNumber))
+        {
+            order.TrackingNumber = dto.TrackingNumber.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.TrackingUrl))
+        {
+            order.TrackingUrl = dto.TrackingUrl.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.DeliveryDetails))
+        {
+            order.DeliveryUpdateDetails = dto.DeliveryDetails.Trim();
+        }
+
+        if (newStatus == OrderStatus.Cancelled)
+        {
+            order.CancelledBy = "Store";
+            order.CancelledReason = string.IsNullOrWhiteSpace(dto.CancelReason)
+                ? "Order cancelled by the store"
+                : dto.CancelReason.Trim();
+        }
+
+        if (!await unit.Complete())
+        {
+            return BadRequest("Problem updating order status");
+        }
+
+        var tokens = NotificationTokenBuilder.BuildOrderTokens(order, notificationOptions.Value);
+
+        if (newStatus == OrderStatus.Cancelled)
+        {
+            tokens["CancelledBy"] = order.CancelledBy ?? "Store";
+            tokens["CancelReason"] = order.CancelledReason ?? "Order cancelled";
+
+            await notificationService.SendAsync(new Core.Models.Notifications.NotificationRequest(
+                NotificationTemplateKeys.OrderCancelled,
+                order.BuyerEmail,
+                tokens));
+
+            var adminRequests = await BuildAdminRequestsAsync(userManager, NotificationTemplateKeys.AdminOrderCancelled, tokens);
+            await notificationService.SendBulkAsync(adminRequests);
+
+            return ToSummary(order);
+        }
+
+        if (newStatus is OrderStatus.Processing or OrderStatus.Packed or OrderStatus.Shipped or OrderStatus.Delivered)
+        {
+            tokens["OrderStatus"] = FormatStatus(newStatus);
+            await notificationService.SendAsync(new Core.Models.Notifications.NotificationRequest(
+                NotificationTemplateKeys.OrderStatusUpdated,
+                order.BuyerEmail,
+                tokens));
+        }
+
+        if (newStatus == OrderStatus.Shipped)
+        {
+            tokens["TrackingNumber"] = order.TrackingNumber ?? "Pending";
+            tokens["TrackingUrl"] = order.TrackingUrl ?? notificationOptions.Value.StoreUrl;
+
+            await notificationService.SendAsync(new Core.Models.Notifications.NotificationRequest(
+                NotificationTemplateKeys.DeliveryHandedOff,
+                order.BuyerEmail,
+                tokens));
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.DeliveryDetails))
+        {
+            tokens["DeliveryDetails"] = order.DeliveryUpdateDetails ?? dto.DeliveryDetails.Trim();
+            await notificationService.SendAsync(new Core.Models.Notifications.NotificationRequest(
+                NotificationTemplateKeys.DeliveryUpdated,
+                order.BuyerEmail,
+                tokens));
+        }
+
+        return ToSummary(order);
+    }
+
     [HttpPost("orders/refund/{id:int}")]
     public async Task<ActionResult<OrderSummaryDto>> RefundOrder(int id)
     {
@@ -63,6 +159,7 @@ public class AdminController(
         if (result == "succeeded")
         {
             order.Status = OrderStatus.Refunded;
+            order.StatusUpdatedAt = DateTime.UtcNow;
 
             await unit.Complete();
 
@@ -76,6 +173,17 @@ public class AdminController(
 
             var adminRequests = await BuildAdminRequestsAsync(userManager, NotificationTemplateKeys.AdminRefundSuccess, tokens);
             await notificationService.SendBulkAsync(adminRequests);
+
+            var returnTokens = new Dictionary<string, string>(tokens)
+            {
+                ["ReturnReason"] = "Refund processed",
+                ["ReturnUrl"] = $"{notificationOptions.Value.StoreUrl}/orders/{order.Id}"
+            };
+
+            await notificationService.SendAsync(new Core.Models.Notifications.NotificationRequest(
+                NotificationTemplateKeys.ReturnRequestCreated,
+                order.BuyerEmail,
+                returnTokens));
 
             return ToSummary(order);
         }
@@ -116,5 +224,31 @@ public class AdminController(
                 tokens,
                 a.Id))
             .ToList();
+    }
+
+    private static bool TryParseStatus(string value, out OrderStatus status)
+    {
+        return Enum.TryParse(value, true, out status);
+    }
+
+    private static bool CanUpdate(OrderStatus status)
+    {
+        return status is not (OrderStatus.Cancelled or OrderStatus.Delivered or OrderStatus.Refunded);
+    }
+
+    private static string FormatStatus(OrderStatus status)
+    {
+        return status switch
+        {
+            OrderStatus.PaymentReceived => "Payment received",
+            OrderStatus.PaymentFailed => "Payment failed",
+            OrderStatus.PaymentMismatch => "Payment mismatch",
+            OrderStatus.Processing => "In processing",
+            OrderStatus.Packed => "Packed",
+            OrderStatus.Shipped => "Shipped",
+            OrderStatus.Delivered => "Delivered",
+            OrderStatus.Cancelled => "Cancelled",
+            _ => status.ToString()
+        };
     }
 }

@@ -16,6 +16,10 @@ import { ReviewFormDialogComponent } from '../../../shared/components/reviews/re
 import { SnackbarService } from '../../../core/services/snackbar.service';
 import { StarRatingComponent } from '../../../shared/components/rating/star-rating.component';
 import { Review } from '../../../shared/models/review';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 
 @Component({
   selector: 'app-order-detailed',
@@ -29,7 +33,11 @@ import { Review } from '../../../shared/models/review';
     PaymentCardPipe,
     RouterLink,
     MatDialogModule,
-    StarRatingComponent
+    StarRatingComponent,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule
 ],
   templateUrl: './order-detailed.component.html',
   styleUrl: './order-detailed.component.scss'
@@ -43,8 +51,33 @@ export class OrderDetailedComponent implements OnInit {
   private reviewService = inject(ReviewService);
   private dialog = inject(MatDialog);
   private snackbar = inject(SnackbarService);
+  private fb = inject(FormBuilder);
   order?: Order;
-  buttonText = this.accountService.isAdmin() ? 'Return to admin' : 'Return to orders'
+  buttonText = this.accountService.isAdmin() ? 'Return to admin' : 'Return to orders';
+  adminStatusOptions = [
+    'Pending',
+    'PaymentReceived',
+    'PaymentFailed',
+    'PaymentMismatch',
+    'Processing',
+    'Packed',
+    'Shipped',
+    'Delivered',
+    'Cancelled',
+    'Refunded'
+  ];
+
+  statusForm = this.fb.group({
+    status: ['', Validators.required],
+    cancelReason: [''],
+    trackingNumber: [''],
+    trackingUrl: [''],
+    deliveryDetails: ['']
+  });
+
+  cancelForm = this.fb.group({
+    reason: ['']
+  });
 
   ngOnInit(): void {
     this.loadOrder();
@@ -65,9 +98,66 @@ export class OrderDetailedComponent implements OnInit {
       : this.orderService.getOrderDetailed(+id);
 
     loadOrderData.subscribe({
-      next: order => this.order = order,
+      next: order => {
+        this.order = order;
+        if (this.accountService.isAdmin()) {
+          this.statusForm.patchValue({
+            status: order.status,
+            cancelReason: order.cancelledReason ?? '',
+            trackingNumber: order.trackingNumber ?? '',
+            trackingUrl: order.trackingUrl ?? '',
+            deliveryDetails: order.deliveryUpdateDetails ?? ''
+          }, { emitEvent: false });
+        }
+      },
       error: () => this.order = undefined
     })
+  }
+
+  updateStatus() {
+    if (!this.order) return;
+    if (this.statusForm.invalid) {
+      this.statusForm.markAllAsTouched();
+      return;
+    }
+
+    const raw = this.statusForm.value;
+    const payload = {
+      status: raw.status ?? '',
+      cancelReason: raw.cancelReason?.toString().trim() || undefined,
+      trackingNumber: raw.trackingNumber?.toString().trim() || undefined,
+      trackingUrl: raw.trackingUrl?.toString().trim() || undefined,
+      deliveryDetails: raw.deliveryDetails?.toString().trim() || undefined
+    };
+
+    this.adminService.updateOrderStatus(this.order.id, payload).subscribe({
+      next: () => {
+        this.snackbar.success('Order status updated');
+        this.loadOrder();
+      },
+      error: err => this.snackbar.error(err?.error || 'Unable to update order status')
+    });
+  }
+
+  cancelOrder() {
+    if (!this.order) return;
+    const reason = this.cancelForm.value.reason?.toString().trim() || undefined;
+    this.orderService.cancelOrder(this.order.id, reason).subscribe({
+      next: order => {
+        this.order = order;
+        this.snackbar.success('Order cancelled');
+      },
+      error: err => this.snackbar.error(err?.error || 'Unable to cancel order')
+    });
+  }
+
+  get canCancelOrder(): boolean {
+    if (!this.order || this.accountService.isAdmin()) return false;
+    return !['Cancelled', 'Shipped', 'Delivered', 'Refunded'].includes(this.order.status);
+  }
+
+  get isAdmin(): boolean {
+    return this.accountService.isAdmin();
   }
 
   openReviewDialog(item: Order['orderItems'][number]) {

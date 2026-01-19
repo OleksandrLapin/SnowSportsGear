@@ -18,7 +18,7 @@ public static class ProductMappingExtensions
             ? "api/products/{id}/image"
             : product.PictureUrl?.TrimStart('/') ?? string.Empty;
 
-        if (!string.IsNullOrEmpty(baseUrl) && !string.IsNullOrEmpty(imagePath))
+        if (hasStoredImage && !string.IsNullOrEmpty(baseUrl) && !string.IsNullOrEmpty(imagePath))
         {
             var cleanedBase = baseUrl.TrimEnd('/');
             var cleanedPath = imagePath.Replace("{id}", product.Id.ToString()).TrimStart('/');

@@ -133,7 +133,12 @@ public class ReviewRepository(StoreContext context) : IReviewRepository
             .Include(o => o.OrderItems)
             .AnyAsync(o =>
                 o.BuyerEmail == email &&
-                (o.Status == OrderStatus.PaymentReceived || o.Status == OrderStatus.Refunded) &&
+                (o.Status == OrderStatus.PaymentReceived ||
+                 o.Status == OrderStatus.Processing ||
+                 o.Status == OrderStatus.Packed ||
+                 o.Status == OrderStatus.Shipped ||
+                 o.Status == OrderStatus.Delivered ||
+                 o.Status == OrderStatus.Refunded) &&
                 o.OrderItems.Any(i => i.ItemOrdered.ProductId == productId));
     }
 
@@ -198,7 +203,12 @@ public class ReviewRepository(StoreContext context) : IReviewRepository
             .Include(o => o.OrderItems)
             .Where(o =>
                 o.BuyerEmail == email &&
-                (o.Status == OrderStatus.PaymentReceived || o.Status == OrderStatus.Refunded) &&
+                (o.Status == OrderStatus.PaymentReceived ||
+                 o.Status == OrderStatus.Processing ||
+                 o.Status == OrderStatus.Packed ||
+                 o.Status == OrderStatus.Shipped ||
+                 o.Status == OrderStatus.Delivered ||
+                 o.Status == OrderStatus.Refunded) &&
                 o.OrderItems.Any(i => i.ItemOrdered.ProductId == productId));
 
         if (orderId.HasValue)

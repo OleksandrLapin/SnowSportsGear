@@ -23,4 +23,8 @@ export class OrderService {
   getOrderDetailed(id: number) {
     return this.http.get<Order>(this.baseUrl + 'orders/' + id);
   }
+
+  cancelOrder(id: number, reason?: string) {
+    return this.http.post<Order>(this.baseUrl + 'orders/' + id + '/cancel', {reason});
+  }
 }

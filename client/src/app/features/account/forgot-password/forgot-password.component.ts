@@ -7,6 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { AccountService } from '../../../core/services/account.service';
 import { SnackbarService } from '../../../core/services/snackbar.service';
 import { RouterLink } from '@angular/router';
+import { getErrorMessage } from '../../../core/utils/http-error';
 
 @Component({
   selector: 'app-forgot-password',
@@ -42,7 +43,7 @@ export class ForgotPasswordComponent {
         this.snack.success('Password reset email sent');
       },
       error: err => {
-        this.snack.error(err?.error || 'Unable to send reset email');
+        this.snack.error(getErrorMessage(err, 'Unable to send reset email'));
       }
     });
   }

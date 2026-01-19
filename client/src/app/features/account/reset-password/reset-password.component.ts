@@ -7,6 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AccountService } from '../../../core/services/account.service';
 import { SnackbarService } from '../../../core/services/snackbar.service';
+import { getErrorMessage } from '../../../core/utils/http-error';
 
 @Component({
   selector: 'app-reset-password',
@@ -54,7 +55,7 @@ export class ResetPasswordComponent implements OnInit {
         this.router.navigateByUrl('/account/login');
       },
       error: err => {
-        this.snack.error(err?.error || 'Unable to reset password');
+        this.snack.error(getErrorMessage(err, 'Unable to reset password'));
       }
     });
   }

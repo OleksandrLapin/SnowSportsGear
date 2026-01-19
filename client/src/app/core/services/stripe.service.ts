@@ -1,10 +1,10 @@
 import { inject, Injectable } from '@angular/core';
-import {ConfirmationToken, loadStripe, Stripe, StripeAddressElement, StripeAddressElementOptions, StripeElements, StripePaymentElement} from '@stripe/stripe-js';
+import {ConfirmationToken, loadStripe, Stripe, StripeAddressElement, StripeAddressElementOptions, StripeElements, StripePaymentElement, StripePaymentElementOptions} from '@stripe/stripe-js';
 import { environment } from '../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { CartService } from './cart.service';
 import { Cart } from '../../shared/models/cart';
-import { firstValueFrom, map } from 'rxjs';
+import { firstValueFrom, map, switchMap } from 'rxjs';
 import { AccountService } from './account.service';
 
 
@@ -48,7 +48,22 @@ export class StripeService {
     if (!this.paymentElement) {
       const elements = await this.initializeElements();
       if (elements) {
-        this.paymentElement = elements.create('payment');
+        const options: StripePaymentElementOptions = {
+          paymentMethodOrder: ['card'],
+          wallets: {
+            applePay: 'never',
+            googlePay: 'never'
+          },
+          fields: {
+            billingDetails: {
+              name: 'never',
+              email: 'never',
+              phone: 'never',
+              address: 'never'
+            }
+          }
+        };
+        this.paymentElement = elements.create('payment', options);
       } else {
         throw new Error('Elements instance has not been initialized');
       }
@@ -90,13 +105,25 @@ export class StripeService {
     return this.addressElement;
   }
 
-  async createConfirmationToken() {
+  async createConfirmationToken(billingDetails?: {name?: string | null; email?: string | null; phone?: string | null}) {
     const stripe = await this.getStripeInstance();
     const elements = await this.initializeElements();
     const result = await elements.submit();
     if (result.error) throw new Error(result.error.message);
     if (stripe) {
-      return await stripe.createConfirmationToken({elements});
+      const name = billingDetails?.name?.trim() ?? null;
+      const email = billingDetails?.email?.trim() ?? null;
+      const phone = billingDetails?.phone?.trim() ?? null;
+      const params = {
+        payment_method_data: {
+          billing_details: {
+            name,
+            email,
+            phone
+          }
+        }
+      };
+      return await stripe.createConfirmationToken({elements, params});
     } else {
       throw new Error('Stripe not available');
     }
@@ -125,17 +152,12 @@ export class StripeService {
 
   createOrUpdatePaymentIntent() {
     const cart = this.cartService.cart();
-    const hasClientSecret = !!cart?.clientSecret;
     if (!cart) throw new Error('Problem with cart');
     return this.http.post<Cart>(this.baseUrl + 'payments/' + cart.id, {}).pipe(
-      map(async cart => {
-        if (!hasClientSecret) {
-          await firstValueFrom(this.cartService.setCart(cart));
-          return cart;
-        }
-        return cart;
-      })
-    )
+      switchMap(updatedCart =>
+        this.cartService.setCart(updatedCart).pipe(map(() => updatedCart))
+      )
+    );
   }
 
   disposeElements() {

@@ -91,7 +91,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   async getConfirmationToken() {
     try {
       if (Object.values(this.completionStatus()).every(status => status === true)) {
-        const result = await this.stripeService.createConfirmationToken();
+        const billingDetails = await this.getBillingDetailsForStripe();
+        const result = await this.stripeService.createConfirmationToken(billingDetails);
         if (result.error) throw new Error(result.error.message);
         this.confirmationToken = result.confirmationToken;
         console.log(this.confirmationToken);
@@ -184,6 +185,26 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         postalCode: address.postal_code || ''
       }
     } else return null;
+  }
+
+  private async getBillingDetailsForStripe(): Promise<{name?: string | null; email?: string | null; phone?: string | null}> {
+    const user = this.accountService.currentUser();
+    const email = user?.email?.trim();
+    let name = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+    const addressValue = await this.addressElement?.getValue();
+    const addressName = addressValue?.value?.name?.trim();
+    const phone = addressValue?.value?.phone?.trim();
+    if (addressName) {
+      name = addressName;
+    }
+    if (!name) {
+      name = email ?? 'Customer';
+    }
+    return {
+      name: name || null,
+      email: email || null,
+      phone: phone || null
+    };
   }
 
   onSaveAddressCheckboxChange(event: MatCheckboxChange) {

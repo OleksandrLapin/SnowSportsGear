@@ -5,6 +5,8 @@ namespace Core.Helpers;
 
 public static class NotificationTemplateDefaults
 {
+    private const string CodeSpan = "<span style=\"display:inline-block; margin:12px 0; padding:10px 14px; font-family:'Courier New', monospace; font-size:18px; letter-spacing:2px; color:#4c1d95; background:#f3e8ff; border:1px dashed #c4b5fd; border-radius:10px;\">{{Code}}</span>";
+
     public static IReadOnlyList<NotificationTemplate> GetDefaults()
     {
         var now = DateTime.UtcNow;
@@ -16,7 +18,7 @@ public static class NotificationTemplateDefaults
                 Category = NotificationCategory.AccountSecurity,
                 Subject = "Confirm your email for {{StoreName}}",
                 Headline = "Verify your email",
-                Body = "Use the confirmation code below to verify your email address:<br><strong>{{Code}}</strong><br>This code expires in {{CodeExpiry}}.",
+                Body = "Use the confirmation code below to verify your email address:<br>" + CodeSpan + "<br>This code expires in {{CodeExpiry}}.",
                 CtaLabel = "Confirm email",
                 CtaUrl = "{{ConfirmUrl}}",
                 Footer = "If you did not create an account, you can ignore this email.",
@@ -42,7 +44,7 @@ public static class NotificationTemplateDefaults
                 Category = NotificationCategory.AccountSecurity,
                 Subject = "Reset your {{StoreName}} password",
                 Headline = "Password reset request",
-                Body = "We received a request to reset your password. Use this code:<br><strong>{{Code}}</strong><br>or reset using the link below. This code expires in {{CodeExpiry}}.",
+                Body = "We received a request to reset your password. Use this code:<br>" + CodeSpan + "<br>or reset using the link below. This code expires in {{CodeExpiry}}.",
                 CtaLabel = "Reset password",
                 CtaUrl = "{{ResetUrl}}",
                 Footer = "If you did not request a reset, you can ignore this email.",
@@ -68,7 +70,7 @@ public static class NotificationTemplateDefaults
                 Category = NotificationCategory.AccountSecurity,
                 Subject = "Confirm your new email",
                 Headline = "Confirm email change",
-                Body = "Use the code below to confirm your new email address:<br><strong>{{Code}}</strong><br>This code expires in {{CodeExpiry}}.",
+                Body = "Use the code below to confirm your new email address:<br>" + CodeSpan + "<br>This code expires in {{CodeExpiry}}.",
                 CtaLabel = "Confirm email",
                 CtaUrl = "{{ConfirmUrl}}",
                 Footer = "If you did not request this change, contact {{SupportEmail}}.",
@@ -94,7 +96,7 @@ public static class NotificationTemplateDefaults
                 Category = NotificationCategory.AccountSecurity,
                 Subject = "Your {{StoreName}} login code",
                 Headline = "Two-factor authentication",
-                Body = "Use this code to complete your sign-in:<br><strong>{{Code}}</strong><br>This code expires in {{CodeExpiry}}.",
+                Body = "Use this code to complete your sign-in:<br>" + CodeSpan + "<br>This code expires in {{CodeExpiry}}.",
                 Footer = "If you did not attempt to sign in, contact {{SupportEmail}}.",
                 CreatedAt = now,
                 UpdatedAt = now
@@ -130,7 +132,7 @@ public static class NotificationTemplateDefaults
                 Category = NotificationCategory.OrdersPayments,
                 Subject = "Order {{OrderNumber}} confirmed",
                 Headline = "Thanks for your order",
-                Body = "We received your order and will start processing it soon.<br>{{OrderSummary}}<br>Ship to: {{ShippingAddress}}<br>Payment: {{PaymentSummary}}",
+                Body = "We received your order and will start processing it soon.<div style=\"margin:16px 0;\">{{OrderSummary}}</div><div style=\"margin:8px 0;\">Ship to: {{ShippingAddress}}</div><div style=\"margin:8px 0;\">Payment: {{PaymentSummary}}</div>",
                 CtaLabel = "View order",
                 CtaUrl = "{{OrderUrl}}",
                 Footer = "Questions? Contact {{SupportEmail}}.",

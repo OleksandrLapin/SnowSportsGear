@@ -4,6 +4,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { AccountService } from '../../../core/services/account.service';
 import { SnackbarService } from '../../../core/services/snackbar.service';
+import { getErrorMessage } from '../../../core/utils/http-error';
 
 @Component({
   selector: 'app-confirm-email-change',
@@ -36,7 +37,7 @@ export class ConfirmEmailChangeComponent implements OnInit {
       },
       error: err => {
         this.processing = false;
-        this.snack.error(err?.error || 'Unable to confirm email change');
+        this.snack.error(getErrorMessage(err, 'Unable to confirm email change'));
       }
     });
   }

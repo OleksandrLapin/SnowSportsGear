@@ -18,6 +18,7 @@ public class StoreContext(DbContextOptions options) : IdentityDbContext<AppUser>
     public DbSet<ReviewAudit> ReviewAudits { get; set; }
     public DbSet<NotificationTemplate> NotificationTemplates { get; set; }
     public DbSet<NotificationMessage> NotificationMessages { get; set; }
+    public DbSet<SecurityCode> SecurityCodes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

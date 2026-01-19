@@ -9,6 +9,7 @@ import { SnackbarService } from '../../../core/services/snackbar.service';
 import { CommonModule } from '@angular/common';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { getErrorMessage } from '../../../core/utils/http-error';
 
 @Component({
   selector: 'app-profile',
@@ -87,8 +88,7 @@ export class ProfileComponent implements OnInit {
         this.passwordForm.reset();
       },
       error: (err) => {
-        const message = err?.error || 'Unable to change password';
-        this.snackbar.error(message);
+        this.snackbar.error(getErrorMessage(err, 'Unable to change password'));
       }
     });
   }
@@ -96,7 +96,7 @@ export class ProfileComponent implements OnInit {
   requestPasswordReset() {
     this.accountService.requestPasswordReset().subscribe({
       next: () => this.snackbar.success('Password reset email sent'),
-      error: err => this.snackbar.error(err?.error || 'Unable to send reset email')
+      error: err => this.snackbar.error(getErrorMessage(err, 'Unable to send reset email'))
     });
   }
 
@@ -112,7 +112,7 @@ export class ProfileComponent implements OnInit {
         this.snackbar.success('Email change confirmation sent');
         this.emailForm.reset();
       },
-      error: err => this.snackbar.error(err?.error || 'Unable to request email change')
+      error: err => this.snackbar.error(getErrorMessage(err, 'Unable to request email change'))
     });
   }
 
@@ -124,7 +124,7 @@ export class ProfileComponent implements OnInit {
         this.snackbar.success(enabled ? 'Two-factor enabled' : 'Two-factor disabled');
       },
       error: err => {
-        this.snackbar.error(err?.error || 'Unable to update two-factor settings');
+        this.snackbar.error(getErrorMessage(err, 'Unable to update two-factor settings'));
       }
     });
   }
@@ -132,14 +132,14 @@ export class ProfileComponent implements OnInit {
   requestDataExport() {
     this.accountService.requestDataExport().subscribe({
       next: () => this.snackbar.success('Data export request sent'),
-      error: err => this.snackbar.error(err?.error || 'Unable to request data export')
+      error: err => this.snackbar.error(getErrorMessage(err, 'Unable to request data export'))
     });
   }
 
   requestDeletion() {
     this.accountService.requestAccountDeletion().subscribe({
       next: () => this.snackbar.success('Deletion request sent'),
-      error: err => this.snackbar.error(err?.error || 'Unable to request deletion')
+      error: err => this.snackbar.error(getErrorMessage(err, 'Unable to request deletion'))
     });
   }
 }

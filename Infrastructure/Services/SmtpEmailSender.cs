@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Mail;
+using System.IO;
 using Core.Entities.Notifications;
 using Core.Interfaces;
 using Core.Settings;
@@ -21,7 +22,17 @@ public class SmtpEmailSender : INotificationSender
 
     public async Task SendAsync(NotificationMessage message, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(settings.Host) || string.IsNullOrWhiteSpace(settings.FromEmail))
+        if (string.IsNullOrWhiteSpace(settings.FromEmail))
+        {
+            var error = "Email settings not configured.";
+            logger.LogWarning("{Error} Unable to send to {Recipient}", error, message.RecipientEmail);
+            throw new InvalidOperationException(error);
+        }
+
+        var pickupDirectory = ResolvePickupDirectory(settings.PickupDirectory);
+        var usePickupDirectory = string.IsNullOrWhiteSpace(settings.Host) && !string.IsNullOrWhiteSpace(pickupDirectory);
+
+        if (string.IsNullOrWhiteSpace(settings.Host) && !usePickupDirectory)
         {
             var error = "Email settings not configured.";
             logger.LogWarning("{Error} Unable to send to {Recipient}", error, message.RecipientEmail);
@@ -44,16 +55,36 @@ public class SmtpEmailSender : INotificationSender
             mail.AlternateViews.Add(textView);
         }
 
-        using var client = new SmtpClient(settings.Host, settings.Port)
-        {
-            EnableSsl = settings.UseSsl
-        };
+        using var client = new SmtpClient(string.IsNullOrWhiteSpace(settings.Host) ? "localhost" : settings.Host, settings.Port);
 
-        if (!string.IsNullOrWhiteSpace(settings.UserName))
+        if (usePickupDirectory)
         {
-            client.Credentials = new NetworkCredential(settings.UserName, settings.Password);
+            Directory.CreateDirectory(pickupDirectory);
+            client.DeliveryMethod = SmtpDeliveryMethod.SpecifiedPickupDirectory;
+            client.PickupDirectoryLocation = pickupDirectory;
+        }
+        else
+        {
+            client.EnableSsl = settings.UseSsl;
+            if (!string.IsNullOrWhiteSpace(settings.UserName))
+            {
+                client.Credentials = new NetworkCredential(settings.UserName, settings.Password);
+            }
         }
 
         await client.SendMailAsync(mail, cancellationToken);
+
+        if (usePickupDirectory)
+        {
+            logger.LogInformation("Email saved to pickup directory {PickupDirectory} for {Recipient}", pickupDirectory, message.RecipientEmail);
+        }
+    }
+
+    private string ResolvePickupDirectory(string pickupDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(pickupDirectory)) return string.Empty;
+        return Path.IsPathRooted(pickupDirectory)
+            ? pickupDirectory
+            : Path.Combine(Directory.GetCurrentDirectory(), pickupDirectory);
     }
 }

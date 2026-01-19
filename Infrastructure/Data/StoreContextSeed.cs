@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System.Data;
 using System.Text.Json;
+using Core.Constants;
 using Core.Entities;
 using Core.Helpers;
 using Core.Entities.Notifications;
@@ -12,17 +13,31 @@ namespace Infrastructure.Data;
 public class StoreContextSeed
 {
     private const string DefaultPassword = "Pa$$w0rd";
+    private const string AdminEmail = "snowsportsgearnoreply@gmail.com";
+    private const string LegacyAdminEmail = "admin@test.com";
 
     public static async Task SeedAsync(StoreContext context, UserManager<AppUser> userManager)
     {
-        var adminUser = await userManager.FindByEmailAsync("admin@test.com");
+        var adminUser = await userManager.FindByEmailAsync(AdminEmail);
+        if (adminUser == null)
+        {
+            adminUser = await userManager.FindByEmailAsync(LegacyAdminEmail);
+            if (adminUser != null)
+            {
+                adminUser.UserName = AdminEmail;
+                adminUser.Email = AdminEmail;
+                adminUser.EmailConfirmed = true;
+                adminUser.TwoFactorEnabled = true;
+                await userManager.UpdateAsync(adminUser);
+            }
+        }
 
         if (adminUser == null)
         {
             adminUser = new AppUser
             {
-                UserName = "admin@test.com",
-                Email = "admin@test.com",
+                UserName = AdminEmail,
+                Email = AdminEmail,
                 EmailConfirmed = true,
                 TwoFactorEnabled = true
             };
@@ -43,6 +58,7 @@ public class StoreContextSeed
         }
 
         var sampleUsers = await EnsureSampleUsers(userManager);
+        await EnsureOrderColumnsAsync(context);
 
         var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
@@ -70,14 +86,18 @@ public class StoreContextSeed
         }
         else
         {
-            var productsMissingImages = await context.Products
+            var productsMissingImages = (await context.Products
                 .Include(p => p.Variants)
-                .Where(p => p.PictureData == null)
-                .ToListAsync();
+                .ToListAsync())
+                .Where(p =>
+                    p.PictureData == null ||
+                    p.PictureData.Length == 0 ||
+                    string.IsNullOrWhiteSpace(p.PictureUrl))
+                .ToList();
 
             foreach (var product in productsMissingImages)
             {
-                if (product.PictureData == null)
+                if (product.PictureData == null || product.PictureData.Length == 0)
                 {
                     var match = products.FirstOrDefault(x => x.Name == product.Name);
                     if (match != null)
@@ -262,6 +282,67 @@ public class StoreContextSeed
             context.NotificationTemplates.AddRange(toAdd);
             await context.SaveChangesAsync();
         }
+
+        var codeTemplateKeys = new[]
+        {
+            NotificationTemplateKeys.AccountEmailConfirmation,
+            NotificationTemplateKeys.AccountPasswordReset,
+            NotificationTemplateKeys.AccountEmailChange,
+            NotificationTemplateKeys.AccountTwoFactorCode
+        };
+
+        var templatesToUpdate = (await context.NotificationTemplates
+            .Where(t => codeTemplateKeys.Contains(t.Key))
+            .ToListAsync())
+            .Where(t => t.Body.Contains("<strong>{{Code}}</strong>", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (templatesToUpdate.Count > 0)
+        {
+            var updatedAt = DateTime.UtcNow;
+            foreach (var template in templatesToUpdate)
+            {
+                template.Body = template.Body.Replace(
+                    "<strong>{{Code}}</strong>",
+                    "<span class=\"code\">{{Code}}</span>",
+                    StringComparison.OrdinalIgnoreCase);
+                template.UpdatedAt = updatedAt;
+            }
+            await context.SaveChangesAsync();
+        }
+
+        var codeStyle = "display:inline-block; margin:12px 0; padding:10px 14px; font-family:'Courier New', monospace; font-size:18px; letter-spacing:2px; color:#4c1d95; background:#f3e8ff; border:1px dashed #c4b5fd; border-radius:10px;";
+        var templatesWithCodeSpan = (await context.NotificationTemplates
+            .Where(t => codeTemplateKeys.Contains(t.Key))
+            .ToListAsync())
+            .Where(t => t.Body.Contains("class=\"code\"", StringComparison.OrdinalIgnoreCase) ||
+                        t.Body.Contains("class='code'", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (templatesWithCodeSpan.Count > 0)
+        {
+            var updatedAt = DateTime.UtcNow;
+            foreach (var template in templatesWithCodeSpan)
+            {
+                template.Body = template.Body
+                    .Replace("<span class=\"code\">", $"<span style=\"{codeStyle}\">", StringComparison.OrdinalIgnoreCase)
+                    .Replace("<span class='code'>", $"<span style=\"{codeStyle}\">", StringComparison.OrdinalIgnoreCase);
+                template.UpdatedAt = updatedAt;
+            }
+            await context.SaveChangesAsync();
+        }
+
+        var orderTemplate = await context.NotificationTemplates
+            .FirstOrDefaultAsync(t => t.Key == NotificationTemplateKeys.OrderCreated);
+        if (orderTemplate != null && !orderTemplate.Body.Contains("margin:16px 0", StringComparison.OrdinalIgnoreCase))
+        {
+            orderTemplate.Body = "We received your order and will start processing it soon." +
+                "<div style=\"margin:16px 0;\">{{OrderSummary}}</div>" +
+                "<div style=\"margin:8px 0;\">Ship to: {{ShippingAddress}}</div>" +
+                "<div style=\"margin:8px 0;\">Payment: {{PaymentSummary}}</div>";
+            orderTemplate.UpdatedAt = DateTime.UtcNow;
+            await context.SaveChangesAsync();
+        }
     }
 
     private static async Task EnsureNotificationTablesAsync(StoreContext context)
@@ -278,6 +359,25 @@ public class StoreContextSeed
         {
             await using var command = connection.CreateCommand();
             command.CommandText = @"
+IF OBJECT_ID(N'[SecurityCodes]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [SecurityCodes] (
+        [Id] int NOT NULL IDENTITY,
+        [UserId] nvarchar(450) NOT NULL,
+        [Purpose] nvarchar(100) NOT NULL,
+        [CodeHash] nvarchar(128) NOT NULL,
+        [CodeSalt] nvarchar(64) NOT NULL,
+        [Token] nvarchar(max) NOT NULL,
+        [TargetEmail] nvarchar(256) NULL,
+        [ExpiresAt] datetime2 NOT NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        [UsedAt] datetime2 NULL,
+        CONSTRAINT [PK_SecurityCodes] PRIMARY KEY ([Id])
+    );
+    CREATE INDEX [IX_SecurityCodes_UserId_Purpose] ON [SecurityCodes] ([UserId], [Purpose]);
+    CREATE INDEX [IX_SecurityCodes_ExpiresAt] ON [SecurityCodes] ([ExpiresAt]);
+END;
+
 IF OBJECT_ID(N'[NotificationTemplates]', N'U') IS NULL
 BEGIN
     CREATE TABLE [NotificationTemplates] (
@@ -332,17 +432,103 @@ END;";
         }
     }
 
-    private static void PopulateImage(Product product, string rootPath)
+    private static async Task EnsureOrderColumnsAsync(StoreContext context)
+    {
+        var connection = context.Database.GetDbConnection();
+        var shouldClose = connection.State != ConnectionState.Open;
+
+        if (shouldClose)
+        {
+            await connection.OpenAsync();
+        }
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = @"
+IF COL_LENGTH('Orders', 'StatusUpdatedAt') IS NULL
+    ALTER TABLE [Orders] ADD [StatusUpdatedAt] datetime2 NULL;
+IF COL_LENGTH('Orders', 'TrackingNumber') IS NULL
+    ALTER TABLE [Orders] ADD [TrackingNumber] nvarchar(200) NULL;
+IF COL_LENGTH('Orders', 'TrackingUrl') IS NULL
+    ALTER TABLE [Orders] ADD [TrackingUrl] nvarchar(1000) NULL;
+IF COL_LENGTH('Orders', 'CancelledBy') IS NULL
+    ALTER TABLE [Orders] ADD [CancelledBy] nvarchar(200) NULL;
+IF COL_LENGTH('Orders', 'CancelledReason') IS NULL
+    ALTER TABLE [Orders] ADD [CancelledReason] nvarchar(1000) NULL;
+IF COL_LENGTH('Orders', 'DeliveryUpdateDetails') IS NULL
+    ALTER TABLE [Orders] ADD [DeliveryUpdateDetails] nvarchar(2000) NULL;";
+            await command.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
+    }
+
+    private static void PopulateImage(Product product, string? rootPath)
     {
         if (product.PictureData != null) return;
-        var relativePath = product.PictureUrl?.TrimStart('/') ?? string.Empty;
-        if (string.IsNullOrEmpty(relativePath)) return;
+        var relativePath = product.PictureUrl?.TrimStart('/', '\\') ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(relativePath)) return;
 
-        var imagePath = Path.Combine(rootPath ?? string.Empty, "wwwroot", relativePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
-        if (!File.Exists(imagePath)) return;
+        var normalizedPath = relativePath.Replace('/', Path.DirectorySeparatorChar);
+        foreach (var basePath in GetImageSearchRoots(rootPath))
+        {
+            if (!Directory.Exists(basePath)) continue;
 
-        product.PictureData = File.ReadAllBytes(imagePath);
-        product.PictureContentType = GetContentType(imagePath);
+            var imagePath = Path.Combine(basePath, normalizedPath);
+            if (!File.Exists(imagePath)) continue;
+
+            product.PictureData = File.ReadAllBytes(imagePath);
+            product.PictureContentType = GetContentType(imagePath);
+            return;
+        }
+    }
+
+    private static IEnumerable<string> GetImageSearchRoots(string? rootPath)
+    {
+        var roots = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(rootPath))
+        {
+            roots.Add(Path.Combine(rootPath, "wwwroot"));
+        }
+
+        var current = Directory.GetCurrentDirectory();
+        roots.Add(Path.Combine(current, "wwwroot"));
+        roots.Add(Path.Combine(current, "..", "client", "public"));
+
+        var repoRoot = FindRepoRoot(current);
+        if (!string.IsNullOrWhiteSpace(repoRoot))
+        {
+            roots.Add(Path.Combine(repoRoot, "client", "public"));
+            roots.Add(Path.Combine(repoRoot, "API", "wwwroot"));
+        }
+
+        roots.Add(Path.Combine(AppContext.BaseDirectory, "wwwroot"));
+
+        return roots
+            .Select(Path.GetFullPath)
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string? FindRepoRoot(string startDirectory)
+    {
+        var directory = new DirectoryInfo(startDirectory);
+        while (directory != null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "SnowSportsGear.sln")))
+            {
+                return directory.FullName;
+            }
+            directory = directory.Parent;
+        }
+
+        return null;
     }
 
     private static string GetContentType(string path)

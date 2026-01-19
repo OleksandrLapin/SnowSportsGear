@@ -45,6 +45,9 @@ npm install
   }
 ```
 
+Email notifications are configured via `EmailSettings` in `API/appsettings.json`. In development the default is to write `.eml` files to `API/EmailOutbox` (set in `API/appsettings.Development.json`). To send real emails, configure `EmailSettings.Host`, `UserName`, `Password`, and `FromEmail`.
+
+
 7. To use the Stripe webhook you will also need to use the StripeCLI, and when you run this you will be given a whsec key which you will need to add to the appsettings.json.   To get this key and instructions on how to install the Stripe CLI you can go to your Stripe dashboad ⇒ Developers ⇒ Webhooks ⇒ Add local listener.   The whsec key will be visible in the terminal when you run Stripe.
 8. Once you have the Stripe CLI you can then run this so it listens to stripe events and forward them to the .Net API:
 
