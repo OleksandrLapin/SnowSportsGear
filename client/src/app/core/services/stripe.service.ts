@@ -36,7 +36,7 @@ export class StripeService {
       if (stripe) {
         const cart = await firstValueFrom(this.createOrUpdatePaymentIntent());
         this.elements = stripe.elements(
-          {clientSecret: cart.clientSecret, appearance: {labels: 'floating'}})
+          {clientSecret: cart.clientSecret, appearance: {labels: 'floating'}, locale: 'en'})
       } else {
         throw new Error('Stripe has not been loaded');
       }
