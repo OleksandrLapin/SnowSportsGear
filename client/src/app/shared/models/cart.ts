@@ -13,6 +13,10 @@ export type CartItem = {
     productId: number;
     productName: string;
     price: number;
+    originalPrice?: number | null;
+    salePrice?: number | null;
+    lowestPrice?: number | null;
+    maxQuantity?: number | null;
     quantity: number;
     pictureUrl: string;
     brand: string;

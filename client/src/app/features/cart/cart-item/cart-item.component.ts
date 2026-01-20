@@ -22,8 +22,8 @@ export class CartItemComponent {
   item = input.required<CartItem>();
   cartService = inject(CartService);
 
-  incrementQuantity() {
-    this.cartService.addItemToCart(this.item(), 1, this.item().size);
+  async incrementQuantity() {
+    await this.cartService.addItemToCart(this.item(), 1, this.item().size);
   }
 
   decrementQuantity() {

@@ -81,7 +81,7 @@ export class CartService {
       if (requested > variant.quantityInStock) {
         throw new Error(`Only ${variant.quantityInStock - existingQty} left in stock for size ${size}`);
       }
-      item = this.mapProductToCartItem(product, size);
+      item = this.mapProductToCartItem(product, size, variant.quantityInStock);
     }
     cart.items = this.addOrUpdateItem(cart.items, item, quantity);
     await firstValueFrom(this.setCart(cart));
@@ -116,21 +116,42 @@ async removeItemFromCart(productId: number, quantity = 1, size?: string) {
 
   private addOrUpdateItem(items: CartItem[], item: CartItem, quantity: number): CartItem[] {
     const index = items.findIndex(x => x.productId === item.productId && x.size === item.size);
+    const maxQty = item.maxQuantity ?? (index !== -1 ? items[index].maxQuantity : null);
     if (index === -1) {
+      const desired = quantity;
+      if (maxQty && desired > maxQty) {
+        return items;
+      }
       item.quantity = quantity;
+      item.maxQuantity = maxQty ?? item.maxQuantity ?? null;
       items.push(item);
     } else {
-      items[index].quantity += quantity
+      const desired = items[index].quantity + quantity;
+      const cap = maxQty ?? null;
+      if (cap && desired > cap) {
+        items[index].quantity = cap;
+      } else {
+        items[index].quantity = desired;
+      }
+      items[index].maxQuantity = cap ?? items[index].maxQuantity ?? null;
     }
     return items;
   }
 
-  private mapProductToCartItem(item: Product, size: string): CartItem {
-    const priceToUse = item.salePrice && item.salePrice > 0 ? item.salePrice : item.price;
+  private mapProductToCartItem(item: Product, size: string, maxQuantity?: number): CartItem {
+    const salePrice = item.salePrice ?? null;
+    const priceToUse = salePrice !== null && salePrice > 0 && salePrice < item.price
+      ? salePrice
+      : item.price;
+    const hasSale = priceToUse !== item.price;
     return {
       productId: item.id,
       productName: item.name,
       price: priceToUse,
+      originalPrice: item.price,
+      salePrice: hasSale ? item.salePrice : null,
+      lowestPrice: item.lowestPrice ?? null,
+      maxQuantity: maxQuantity ?? null,
       quantity: 0,
       pictureUrl: item.pictureUrl ?? '',
       brand: item.brand,

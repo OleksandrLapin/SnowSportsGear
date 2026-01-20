@@ -139,9 +139,18 @@ public class PaymentService : IPaymentService
             var productItem = await productRepository.GetProductWithVariantsAsync(item.ProductId) 
                 ?? throw new Exception("Problem getting product in cart");
 
-            if (item.Price != productItem.Price)
+            var hasSale = productItem.SalePrice.HasValue
+                && productItem.SalePrice.Value > 0
+                && productItem.SalePrice.Value < productItem.Price;
+            var priceToUse = hasSale ? productItem.SalePrice!.Value : productItem.Price;
+
+            item.OriginalPrice = productItem.Price;
+            item.SalePrice = hasSale ? productItem.SalePrice : null;
+            item.LowestPrice = productItem.LowestPrice;
+
+            if (item.Price != priceToUse)
             {
-                item.Price = productItem.Price;
+                item.Price = priceToUse;
             }
 
             var variant = productItem.Variants.FirstOrDefault(v => v.Size == item.Size);
@@ -149,6 +158,8 @@ public class PaymentService : IPaymentService
             {
                 throw new Exception($"Size {item.Size} is out of stock for {productItem.Name}");
             }
+
+            item.MaxQuantity = variant.QuantityInStock;
 
             if (item.Quantity > variant.QuantityInStock)
             {

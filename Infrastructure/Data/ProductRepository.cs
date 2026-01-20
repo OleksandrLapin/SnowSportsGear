@@ -2,6 +2,7 @@ using Core.Entities;
 using Core.Interfaces;
 using Core.Specifications;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace Infrastructure.Data;
 
@@ -36,6 +37,10 @@ public class ProductRepository(StoreContext context) : IProductRepository
         string? type, string? sort)
     {
         var query = context.Products.AsNoTracking().AsQueryable();
+        Expression<Func<Product, decimal>> actualPrice = x =>
+            x.SalePrice.HasValue && x.SalePrice.Value > 0 && x.SalePrice.Value < x.Price
+                ? x.SalePrice.Value
+                : x.Price;
 
         if (!string.IsNullOrWhiteSpace(brand))
             query = query.Where(x => x.Brand == brand);
@@ -45,8 +50,8 @@ public class ProductRepository(StoreContext context) : IProductRepository
 
         query = sort switch
         {
-            "priceAsc" => query.OrderBy(x => x.Price),
-            "priceDesc" => query.OrderByDescending(x => x.Price),
+            "priceAsc" => query.OrderBy(actualPrice),
+            "priceDesc" => query.OrderByDescending(actualPrice),
             "ratingDesc" => query.OrderByDescending(x => x.RatingAverage),
             "ratingAsc" => query.OrderBy(x => x.RatingAverage),
             _ => query.OrderBy(x => x.Name)
@@ -60,6 +65,10 @@ public class ProductRepository(StoreContext context) : IProductRepository
     public async Task<(IReadOnlyList<Product> Data, int Count)> GetProductsPagedAsync(ProductSpecParams specParams)
     {
         var query = context.Products.AsNoTracking().AsQueryable();
+        Expression<Func<Product, decimal>> actualPrice = x =>
+            x.SalePrice.HasValue && x.SalePrice.Value > 0 && x.SalePrice.Value < x.Price
+                ? x.SalePrice.Value
+                : x.Price;
 
         if (!specParams.IncludeInactive)
         {
@@ -84,8 +93,8 @@ public class ProductRepository(StoreContext context) : IProductRepository
 
         query = specParams.Sort switch
         {
-            "priceAsc" => query.OrderBy(x => x.Price),
-            "priceDesc" => query.OrderByDescending(x => x.Price),
+            "priceAsc" => query.OrderBy(actualPrice),
+            "priceDesc" => query.OrderByDescending(actualPrice),
             "ratingDesc" => query.OrderByDescending(x => x.RatingAverage),
             "ratingAsc" => query.OrderBy(x => x.RatingAverage),
             _ => query.OrderBy(x => x.Name)
