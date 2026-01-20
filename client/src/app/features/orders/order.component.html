@@ -14,8 +14,8 @@
                             </p>
                         </div>
                         <div class="flex items-center gap-3">
-                            <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-                                {{order.status}}
+                            <span class="rounded-full px-3 py-1 text-xs font-medium {{statusClasses[order.status] || 'bg-gray-100 text-gray-700'}}">
+                                {{statusLabels[order.status] || order.status}}
                             </span>
                             <span class="text-lg font-semibold">{{order.total | currency}}</span>
                         </div>

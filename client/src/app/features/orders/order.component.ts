@@ -3,6 +3,7 @@ import { OrderService } from '../../core/services/order.service';
 import { OrderSummary } from '../../shared/models/orderSummary';
 import { RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
+import { ORDER_STATUS_BADGE_CLASSES, ORDER_STATUS_LABELS } from '../../shared/utils/order-status';
 
 @Component({
   selector: 'app-order',
@@ -18,6 +19,8 @@ import { CurrencyPipe, DatePipe } from '@angular/common';
 export class OrderComponent implements OnInit {
   private orderService = inject(OrderService);
   orders: OrderSummary[] = [];
+  statusLabels = ORDER_STATUS_LABELS;
+  statusClasses = ORDER_STATUS_BADGE_CLASSES;
 
   ngOnInit(): void {
     this.orderService.getOrdersForUser().subscribe({

@@ -110,6 +110,8 @@ public class PaymentsController(IPaymentService paymentService,
             }
             order.StatusUpdatedAt = DateTime.UtcNow;
 
+            unit.Repository<Order>().Update(order);
+
             await unit.Complete();
 
             await SendPaymentNotificationsAsync(order, intent.Amount, notificationOptions.Value, notificationService, userManager);
@@ -168,6 +170,7 @@ public class PaymentsController(IPaymentService paymentService,
 
         order.Status = OrderStatus.PaymentFailed;
         order.StatusUpdatedAt = DateTime.UtcNow;
+        unit.Repository<Order>().Update(order);
         await unit.Complete();
 
         var tokens = NotificationTokenBuilder.BuildOrderTokens(order, notificationOptions.Value);

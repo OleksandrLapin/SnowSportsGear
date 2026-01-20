@@ -25,7 +25,11 @@
                     </dl>
                     <dl>
                         <dt class="font-medium">Order status</dt>
-                        <dd class="mt-1 font-light">{{order.status}}</dd>
+                        <dd class="mt-1">
+                            <span class="rounded-full px-3 py-1 text-xs font-medium {{statusClasses[order.status] || 'bg-gray-100 text-gray-700'}}">
+                                {{statusLabels[order.status] || order.status}}
+                            </span>
+                        </dd>
                     </dl>
                     @if (order.cancelledReason) {
                         <dl>

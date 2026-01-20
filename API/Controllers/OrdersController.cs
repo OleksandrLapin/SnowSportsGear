@@ -204,6 +204,8 @@ public class OrdersController(
             ? "Customer requested cancellation"
             : dto.Reason.Trim();
 
+        unit.Repository<Order>().Update(order);
+
         if (!await unit.Complete())
         {
             return BadRequest("Problem cancelling order");

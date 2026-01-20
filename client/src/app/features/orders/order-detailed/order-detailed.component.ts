@@ -20,6 +20,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { ORDER_STATUS_BADGE_CLASSES, ORDER_STATUS_LABELS } from '../../../shared/utils/order-status';
 
 @Component({
   selector: 'app-order-detailed',
@@ -53,6 +54,8 @@ export class OrderDetailedComponent implements OnInit {
   private snackbar = inject(SnackbarService);
   private fb = inject(FormBuilder);
   order?: Order;
+  statusLabels = ORDER_STATUS_LABELS;
+  statusClasses = ORDER_STATUS_BADGE_CLASSES;
   buttonText = this.accountService.isAdmin() ? 'Return to admin' : 'Return to orders';
   adminStatusOptions = [
     'Pending',

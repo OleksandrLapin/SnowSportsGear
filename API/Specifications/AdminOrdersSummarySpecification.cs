@@ -19,7 +19,20 @@ public class AdminOrdersSummarySpecification : BaseSpecification<Order, OrderSum
             BuyerEmail = o.BuyerEmail,
             OrderDate = o.OrderDate,
             Status = o.Status.ToString(),
-            Total = o.Subtotal - o.Discount + (o.DeliveryMethod != null ? o.DeliveryMethod.Price : 0)
+            Total = o.Subtotal - o.Discount + (o.DeliveryMethod != null ? o.DeliveryMethod.Price : 0),
+            TotalItems = o.OrderItems.Sum(i => i.Quantity),
+            PreviewItems = o.OrderItems
+                .Take(4)
+                .Select(i => new OrderItemPreviewDto
+                {
+                    ProductId = i.ItemOrdered.ProductId,
+                    ProductName = i.ItemOrdered.ProductName,
+                    PictureUrl = i.ItemOrdered.PictureUrl,
+                    Price = i.Price,
+                    Quantity = i.Quantity,
+                    Size = i.Size
+                })
+                .ToList()
         });
     }
 

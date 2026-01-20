@@ -27,6 +27,7 @@ import { getDefaultSizesForType } from '../../shared/utils/product-sizes';
 import { ProductSizeGuide, SizeGuideType } from '../../shared/models/size-guide';
 import { getDefaultSizeGuideForType, parseSizeGuide, stringifySizeGuide } from '../../shared/utils/size-guides';
 import { AdminSizeGuideDialogComponent } from './admin-size-guide-dialog.component';
+import { ORDER_STATUS_BADGE_CLASSES, ORDER_STATUS_LABELS } from '../../shared/utils/order-status';
 
 @Component({
   selector: 'app-admin',
@@ -127,6 +128,8 @@ export class AdminComponent implements OnInit {
     { label: 'Gloves', value: 'gloves' }
   ];
   private isSettingSizeGuide = false;
+  statusLabels = ORDER_STATUS_LABELS;
+  statusClasses = ORDER_STATUS_BADGE_CLASSES;
 
   ngOnInit(): void {
     this.loadOrders();

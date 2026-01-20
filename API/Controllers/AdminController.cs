@@ -90,6 +90,8 @@ public class AdminController(
                 : dto.CancelReason.Trim();
         }
 
+        unit.Repository<Order>().Update(order);
+
         if (!await unit.Complete())
         {
             return BadRequest("Problem updating order status");
@@ -161,6 +163,8 @@ public class AdminController(
             order.Status = OrderStatus.Refunded;
             order.StatusUpdatedAt = DateTime.UtcNow;
 
+            unit.Repository<Order>().Update(order);
+
             await unit.Complete();
 
             var tokens = NotificationTokenBuilder.BuildOrderTokens(order, notificationOptions.Value);
@@ -206,7 +210,20 @@ public class AdminController(
             BuyerEmail = order.BuyerEmail,
             OrderDate = order.OrderDate,
             Status = order.Status.ToString(),
-            Total = order.Subtotal - order.Discount + deliveryPrice
+            Total = order.Subtotal - order.Discount + deliveryPrice,
+            TotalItems = order.OrderItems.Sum(i => i.Quantity),
+            PreviewItems = order.OrderItems
+                .Take(4)
+                .Select(i => new OrderItemPreviewDto
+                {
+                    ProductId = i.ItemOrdered.ProductId,
+                    ProductName = i.ItemOrdered.ProductName,
+                    PictureUrl = i.ItemOrdered.PictureUrl,
+                    Price = i.Price,
+                    Quantity = i.Quantity,
+                    Size = i.Size
+                })
+                .ToList()
         };
     }
 
