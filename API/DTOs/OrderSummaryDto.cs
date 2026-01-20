@@ -7,4 +7,6 @@ public class OrderSummaryDto
     public DateTime OrderDate { get; set; }
     public string Status { get; set; } = string.Empty;
     public decimal Total { get; set; }
+    public int? TotalItems { get; set; }
+    public List<OrderItemPreviewDto>? PreviewItems { get; set; }
 }
