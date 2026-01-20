@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Mail;
 using System.IO;
+using System.Text;
 using Core.Entities.Notifications;
 using Core.Interfaces;
 using Core.Settings;
@@ -39,20 +40,26 @@ public class SmtpEmailSender : INotificationSender
             throw new InvalidOperationException(error);
         }
 
+        var htmlBody = string.IsNullOrWhiteSpace(message.HtmlBody)
+            ? message.TextBody ?? string.Empty
+            : message.HtmlBody;
+
         using var mail = new MailMessage
         {
             Subject = message.Subject,
-            Body = message.HtmlBody,
-            IsBodyHtml = true,
+            Body = htmlBody,
+            IsBodyHtml = !string.IsNullOrWhiteSpace(message.HtmlBody),
             From = new MailAddress(settings.FromEmail, settings.FromName)
         };
+        mail.BodyEncoding = Encoding.UTF8;
+        mail.SubjectEncoding = Encoding.UTF8;
 
         mail.To.Add(message.RecipientEmail);
 
-        if (!string.IsNullOrWhiteSpace(message.TextBody))
+        if (!string.IsNullOrWhiteSpace(message.HtmlBody))
         {
-            var textView = AlternateView.CreateAlternateViewFromString(message.TextBody, null, "text/plain");
-            mail.AlternateViews.Add(textView);
+            var htmlView = AlternateView.CreateAlternateViewFromString(message.HtmlBody, Encoding.UTF8, "text/html");
+            mail.AlternateViews.Add(htmlView);
         }
 
         using var client = new SmtpClient(string.IsNullOrWhiteSpace(settings.Host) ? "localhost" : settings.Host, settings.Port);
