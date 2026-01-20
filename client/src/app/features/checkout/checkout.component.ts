@@ -4,7 +4,7 @@ import {MatStepper, MatStepperModule} from '@angular/material/stepper';
 import { MatButton } from '@angular/material/button';
 import { Router, RouterLink } from '@angular/router';
 import { StripeService } from '../../core/services/stripe.service';
-import { ConfirmationToken, StripeAddressElement, StripeAddressElementChangeEvent, StripePaymentElement, StripePaymentElementChangeEvent } from '@stripe/stripe-js';
+import { ConfirmationToken, PaymentMethodCreateParams, StripeAddressElement, StripeAddressElementChangeEvent, StripePaymentElement, StripePaymentElementChangeEvent } from '@stripe/stripe-js';
 import { SnackbarService } from '../../core/services/snackbar.service';
 import {MatCheckboxChange, MatCheckboxModule} from '@angular/material/checkbox';
 import { StepperSelectionEvent } from '@angular/cdk/stepper';
@@ -187,23 +187,33 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     } else return null;
   }
 
-  private async getBillingDetailsForStripe(): Promise<{name?: string | null; email?: string | null; phone?: string | null}> {
+  private async getBillingDetailsForStripe(): Promise<PaymentMethodCreateParams.BillingDetails> {
     const user = this.accountService.currentUser();
     const email = user?.email?.trim();
     let name = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
     const addressValue = await this.addressElement?.getValue();
     const addressName = addressValue?.value?.name?.trim();
     const phone = addressValue?.value?.phone?.trim();
+    const address = addressValue?.value?.address;
     if (addressName) {
       name = addressName;
     }
     if (!name) {
       name = email ?? 'Customer';
     }
+    const billingAddress = address ? {
+      line1: address.line1 ? address.line1.trim() : null,
+      line2: address.line2 ? address.line2.trim() : null,
+      city: address.city ? address.city.trim() : null,
+      state: address.state ? address.state.trim() : null,
+      country: address.country ? address.country.trim() : null,
+      postal_code: address.postal_code ? address.postal_code.trim() : null
+    } : undefined;
     return {
       name: name || null,
       email: email || null,
-      phone: phone || null
+      phone: phone || null,
+      address: billingAddress
     };
   }
 

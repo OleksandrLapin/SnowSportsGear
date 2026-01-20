@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import {ConfirmationToken, loadStripe, Stripe, StripeAddressElement, StripeAddressElementOptions, StripeElements, StripePaymentElement, StripePaymentElementOptions} from '@stripe/stripe-js';
+import {ConfirmationToken, loadStripe, PaymentMethodCreateParams, Stripe, StripeAddressElement, StripeAddressElementOptions, StripeElements, StripePaymentElement, StripePaymentElementOptions} from '@stripe/stripe-js';
 import { environment } from '../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { CartService } from './cart.service';
@@ -105,7 +105,7 @@ export class StripeService {
     return this.addressElement;
   }
 
-  async createConfirmationToken(billingDetails?: {name?: string | null; email?: string | null; phone?: string | null}) {
+  async createConfirmationToken(billingDetails?: PaymentMethodCreateParams.BillingDetails) {
     const stripe = await this.getStripeInstance();
     const elements = await this.initializeElements();
     const result = await elements.submit();
@@ -119,7 +119,8 @@ export class StripeService {
           billing_details: {
             name,
             email,
-            phone
+            phone,
+            address: billingDetails?.address
           }
         }
       };
