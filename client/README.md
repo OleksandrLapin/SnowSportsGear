@@ -1,27 +1,76 @@
 # Client
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.0.7.
+This project uses Angular CLI 18.0.7, but the app is part of a full .NET + Angular solution.
 
-## Development server
+## Prerequisites
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+- Node.js 20.11.1+ (for the client)
+- .NET SDK 8 (for the API)
+- Docker (for SQL Server + Redis)
+- mkcert (for the HTTPS dev server)
 
-## Code scaffolding
+## One-time setup
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+From the repo root:
+
+1) Start infrastructure:
+```
+docker compose up -d
+```
+
+2) Trust the .NET dev certificate:
+```
+dotnet dev-certs https --trust
+```
+
+3) Generate the client HTTPS certificate:
+```
+cd client/ssl
+mkcert localhost
+```
+
+4) Install client deps:
+```
+cd client
+npm install
+```
+
+## Run the full app (recommended)
+
+Terminal 1:
+```
+cd API
+dotnet run
+```
+
+Terminal 2:
+```
+cd client
+ng serve
+```
+
+Open:
+- Client: https://localhost:4200
+- API: https://localhost:5001
 
 ## Build
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+```
+cd client
+npm run build
+```
 
-## Running unit tests
+The build output goes to `API/wwwroot` (see `client/angular.json`), not `dist/`.
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+## Tests
 
-## Running end-to-end tests
+```
+cd client
+npm test
+```
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+## Notes
 
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- Dev API URL is configured in `client/src/environments/environment.development.ts` as `https://localhost:5001/api/`.
+- If you run the client on a different host/port, update CORS in `API/Program.cs` and the `environment.*.ts` URLs.
+- Stripe and Email settings live in `API/appsettings.json` and are optional for basic browsing.
