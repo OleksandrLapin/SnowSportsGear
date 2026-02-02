@@ -52,7 +52,13 @@
                                     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                         @for (item of order.previewItems; track item.productId + '-' + item.size) {
                                             <div class="flex items-center gap-3">
-                                                <img src="{{item.pictureUrl}}" alt="{{item.productName}}"
+                                                <img
+                                                    [src]="getPreviewImageUrl(item.pictureUrl)"
+                                                    alt="{{item.productName}}"
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    fetchpriority="low"
+                                                    (error)="onPreviewImageError($event)"
                                                     class="h-12 w-12 rounded-md border border-gray-200 object-cover">
                                                 <div class="min-w-0 flex-1">
                                                     <p class="truncate text-sm font-medium text-gray-900">

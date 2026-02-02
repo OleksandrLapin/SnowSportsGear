@@ -43,6 +43,7 @@ public class ProductsController(IProductRepository productsRepo, IUnitOfWork uni
     }
 
     [AllowAnonymous]
+    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Any)]
     [HttpGet("{id:int}/image")]
     public async Task<IActionResult> GetProductImage(int id)
     {

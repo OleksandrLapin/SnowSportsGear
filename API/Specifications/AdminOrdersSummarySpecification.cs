@@ -12,6 +12,8 @@ public class AdminOrdersSummarySpecification : BaseSpecification<Order, OrderSum
         x.Status == ParseStatus(specParams.Status))
     {
         AddOrderByDescending(x => x.OrderDate);
+        ApplyNoTracking();
+        ApplySplitQuery();
         ApplyPaging(specParams.PageSize * (specParams.PageIndex - 1), specParams.PageSize);
         AddSelect(o => new OrderSummaryDto
         {

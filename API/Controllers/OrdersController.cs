@@ -57,7 +57,7 @@ public class OrdersController(
             {
                 ProductId = item.ProductId,
                 ProductName = item.ProductName,
-                PictureUrl = item.PictureUrl
+                PictureUrl = ImageUrlHelper.BuildProductPictureUrl(productItem)
             };
 
             var priceToUse = productItem.SalePrice ?? productItem.Price;
@@ -163,6 +163,7 @@ public class OrdersController(
         var ordersToReturn = await unit.Repository<Order>().ListAsync(spec);
         log.LogInformation("ListAsync(user order summaries) completed in {Elapsed}ms", sw.ElapsedMilliseconds);
 
+        ordersToReturn.NormalizePictureUrls(GetBaseUrl());
         return Ok(ordersToReturn);
     }
 
@@ -245,5 +246,13 @@ public class OrdersController(
     private static bool CanCancel(OrderStatus status)
     {
         return status is not (OrderStatus.Cancelled or OrderStatus.Shipped or OrderStatus.Delivered or OrderStatus.Refunded);
+    }
+
+    private string GetBaseUrl()
+    {
+        var request = HttpContext.Request;
+        var host = request.Host.HasValue ? request.Host.Value : "localhost";
+        var scheme = string.IsNullOrEmpty(request.Scheme) ? "https" : request.Scheme;
+        return $"{scheme}://{host}/";
     }
 }

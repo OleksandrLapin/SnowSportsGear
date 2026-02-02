@@ -33,6 +33,8 @@ public class AdminController(
         var data = await unit.Repository<Order>().ListAsync(summarySpec);
         var count = await unit.Repository<Order>().CountAsync(countSpec);
 
+        data.NormalizePictureUrls(GetBaseUrl());
+
         var pagination = new Pagination<OrderSummaryDto>(specParams.PageIndex, specParams.PageSize, count, data);
         return Ok(pagination);
     }
@@ -204,7 +206,7 @@ public class AdminController(
     {
         var deliveryPrice = order.DeliveryMethod?.Price ?? 0;
 
-        return new OrderSummaryDto
+        var summary = new OrderSummaryDto
         {
             Id = order.Id,
             BuyerEmail = order.BuyerEmail,
@@ -225,6 +227,9 @@ public class AdminController(
                 })
                 .ToList()
         };
+
+        summary.NormalizePictureUrls();
+        return summary;
     }
 
     private static async Task<List<Core.Models.Notifications.NotificationRequest>> BuildAdminRequestsAsync(
@@ -267,5 +272,13 @@ public class AdminController(
             OrderStatus.Cancelled => "Cancelled",
             _ => status.ToString()
         };
+    }
+
+    private string GetBaseUrl()
+    {
+        var request = HttpContext.Request;
+        var host = request.Host.HasValue ? request.Host.Value : "localhost";
+        var scheme = string.IsNullOrEmpty(request.Scheme) ? "https" : request.Scheme;
+        return $"{scheme}://{host}/";
     }
 }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using API.DTOs;
+using API.Helpers;
 using Core.Entities;
 using Core.Entities.OrderAggregate;
 
@@ -53,7 +54,7 @@ public static class OrderMappingExtensions
         {
             ProductId = orderItem.ItemOrdered.ProductId,
             ProductName = orderItem.ItemOrdered.ProductName,
-            PictureUrl = orderItem.ItemOrdered.PictureUrl,
+            PictureUrl = ImageUrlHelper.NormalizePictureUrl(orderItem.ItemOrdered.PictureUrl, orderItem.ItemOrdered.ProductId),
             Price = orderItem.Price,
             Quantity = orderItem.Quantity,
             Size = orderItem.Size,

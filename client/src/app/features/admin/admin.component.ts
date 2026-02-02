@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, inject, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {MatTableDataSource, MatTableModule} from '@angular/material/table';
 import { OrderSummary } from '../../shared/models/orderSummary';
 import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -56,7 +56,7 @@ import { ORDER_STATUS_BADGE_CLASSES, ORDER_STATUS_LABELS } from '../../shared/ut
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss'
 })
-export class AdminComponent implements OnInit {
+export class AdminComponent implements OnInit, OnDestroy {
   displayedColumns: string[] = ['id', 'buyerEmail', 'orderDate', 'total', 'status', 'action'];
   dataSource = new MatTableDataSource<OrderSummary>([]);
   private adminService = inject(AdminService);
@@ -89,6 +89,7 @@ export class AdminComponent implements OnInit {
   editingProductId: number | null = null;
   selectedFile: File | null = null;
   imagePreview: string | null = null;
+  private previewObjectUrl: string | null = null;
   showProductForm = false;
   productFilters = this.fb.group({
     search: [''],
@@ -130,6 +131,7 @@ export class AdminComponent implements OnInit {
   private isSettingSizeGuide = false;
   statusLabels = ORDER_STATUS_LABELS;
   statusClasses = ORDER_STATUS_BADGE_CLASSES;
+  readonly previewImagePlaceholder = '/images/placeholder.png';
 
   ngOnInit(): void {
     this.loadOrders();
@@ -409,6 +411,7 @@ export class AdminComponent implements OnInit {
   editProduct(product: Product) {
     this.showProductForm = true;
     this.editingProductId = product.id;
+    this.revokePreviewUrl();
     while (this.variants.length > 0) {
       this.variants.removeAt(0);
     }
@@ -455,6 +458,7 @@ export class AdminComponent implements OnInit {
       sizeGuide: this.sizeGuideGroup.value
     });
     this.selectedFile = null;
+    this.revokePreviewUrl();
     this.imagePreview = null;
     this.showProductForm = false;
   }
@@ -564,11 +568,9 @@ export class AdminComponent implements OnInit {
 
   private setFile(file: File) {
     this.selectedFile = file;
-    const reader = new FileReader();
-    reader.onload = () => {
-      this.imagePreview = reader.result as string;
-    };
-    reader.readAsDataURL(file);
+    this.revokePreviewUrl();
+    this.previewObjectUrl = URL.createObjectURL(file);
+    this.imagePreview = this.previewObjectUrl;
   }
 
   private mergeBrandTypeFromProducts(products: Product[]) {
@@ -670,5 +672,32 @@ export class AdminComponent implements OnInit {
 
   clearSizeGuide() {
     this.setSizeGuide(null);
+  }
+
+  getPreviewImageUrl(url?: string | null): string {
+    if (!url) return this.previewImagePlaceholder;
+    let trimmed = url.trim();
+    if (!trimmed) return this.previewImagePlaceholder;
+    if (/^(data:|blob:)/i.test(trimmed)) return trimmed;
+    trimmed = trimmed.replace(/\\/g, '/');
+    if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('/') || trimmed.startsWith('//')) return trimmed;
+    return `/${trimmed}`;
+  }
+
+  onPreviewImageError(event: Event) {
+    const img = event.target as HTMLImageElement | null;
+    if (!img) return;
+    if (img.src.endsWith(this.previewImagePlaceholder)) return;
+    img.src = this.previewImagePlaceholder;
+  }
+
+  ngOnDestroy(): void {
+    this.revokePreviewUrl();
+  }
+
+  private revokePreviewUrl() {
+    if (!this.previewObjectUrl) return;
+    URL.revokeObjectURL(this.previewObjectUrl);
+    this.previewObjectUrl = null;
   }
 }

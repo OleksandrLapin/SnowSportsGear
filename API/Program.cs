@@ -9,6 +9,7 @@ using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -83,6 +84,15 @@ app.UseAuthorization();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+var clientImagesPath = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "client", "public", "images"));
+if (Directory.Exists(clientImagesPath))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(clientImagesPath),
+        RequestPath = "/images"
+    });
+}
 
 app.MapControllers();
 app.MapGroup("api").MapIdentityApi<AppUser>(); // api/login

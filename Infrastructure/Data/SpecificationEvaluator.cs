@@ -57,6 +57,16 @@ public class SpecificationEvaluator<T> where T : BaseEntity
             query = query.Where(spec.Criteria); // x => x.Brand == brand
         }
 
+        if (spec.IsNoTracking)
+        {
+            query = query.AsNoTracking();
+        }
+
+        if (spec.UseSplitQuery)
+        {
+            query = query.AsSplitQuery();
+        }
+
         if (spec.OrderBy != null)
         {
             query = query.OrderBy(spec.OrderBy);
@@ -66,6 +76,9 @@ public class SpecificationEvaluator<T> where T : BaseEntity
         {
             query = query.OrderByDescending(spec.OrderByDescending);
         }
+
+        query = spec.Includes.Aggregate(query, (current, include) => current.Include(include));
+        query = spec.IncludeStrings.Aggregate(query, (current, include) => current.Include(include));
 
         var selectQuery = query as IQueryable<TResult>;
 
