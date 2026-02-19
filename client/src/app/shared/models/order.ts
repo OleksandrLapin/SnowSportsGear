@@ -46,6 +46,8 @@ export interface OrderItem {
     size: string
     reviewId?: number | null
     reviewRating?: number | null
+    reviewTitle?: string | null
+    reviewContent?: string | null
     reviewDate?: string | null
     canReview?: boolean
   }

@@ -119,7 +119,7 @@
                         <tbody class="divide-y divide-gray-200">
                             @for (item of order.orderItems; track item.productId + '-' + item.size) {
                                 <tr>
-                        <td class="py-4">
+                        <td class="py-4 text-left align-top">
                             <div class="flex items-center gap-4">
                                 <img src="{{item.pictureUrl}}" alt="product image" 
                                     class="w-10 h-10">
@@ -136,6 +136,16 @@
                                     <button mat-stroked-button color="primary" class="px-2" (click)="openReviewDialog(item)">Edit review</button>
                                 }
                             </div>
+                            @if (item.reviewTitle || item.reviewContent) {
+                                <div class="mt-2 text-sm text-gray-700 text-left">
+                                    @if (item.reviewTitle) {
+                                        <div class="font-semibold">{{item.reviewTitle}}</div>
+                                    }
+                                    @if (item.reviewContent) {
+                                        <div class="text-gray-600">{{item.reviewContent}}</div>
+                                    }
+                                </div>
+                            }
                         </td>
                         <td class="p-4">{{item.size}}</td>
                         <td class="p-4">x{{item.quantity}}</td>

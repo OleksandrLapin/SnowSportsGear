@@ -60,6 +60,8 @@ public static class OrderMappingExtensions
             Size = orderItem.Size,
             ReviewId = review?.Id,
             ReviewRating = review?.Rating,
+            ReviewTitle = review?.Title,
+            ReviewContent = review?.Content,
             ReviewDate = review?.UpdatedAt ?? review?.CreatedAt,
             CanReview = review == null && allowReview
         };

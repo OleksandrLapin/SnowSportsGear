@@ -10,6 +10,8 @@ public class OrderItemDto
     public required string Size { get; set; }
     public int? ReviewId { get; set; }
     public int? ReviewRating { get; set; }
+    public string? ReviewTitle { get; set; }
+    public string? ReviewContent { get; set; }
     public DateTime? ReviewDate { get; set; }
     public bool CanReview { get; set; }
 }
